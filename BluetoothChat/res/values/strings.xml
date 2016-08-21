@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Bluetooth Chat</string>
+    <string name="tv_server_mode">Режим сервера</string>
+    <string name="tv_client_mode">Режим клиента</string>
+    <string name="b_server">Запустить сервер</string>
+    <string name="sw_discover_devices">Искать устройства</string>
+    
+    <string name="b_send_message">Отправить</string>
+    <string name="hint_input_message">Введите сообщение...</string>
+    
+    <string name="service_uuid">565b2b42-b215-4717-a10b-f61bd445001f</string>
+    <string name="service_name">Testing Server</string>
+    
+</resources>
