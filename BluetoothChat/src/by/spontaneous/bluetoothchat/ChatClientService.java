@@ -43,11 +43,8 @@ public class ChatClientService extends Service implements IChatClient
 	/** Thread клиентского ожидания новых сообщений от сервера. */
 	private ConnectedThread connectedThread;
 
-	/** Цель подключения; Device-сервер. */
-	private BluetoothDevice device;
-
-	/** Реализация интерфейса чата (клиент / сервер). */
-	private IChatClient altChatClient;
+	/** Внешний целевой BluetoothDevice-сервер (null для самого сервера). */
+	private BluetoothDevice masterDevice;
 
 	@Override
 	public void onCreate()
@@ -65,43 +62,6 @@ public class ChatClientService extends Service implements IChatClient
 		disconnect();
 
 		Toast.makeText(getBaseContext(), "ChatClientService onDestroy()", Toast.LENGTH_LONG).show();
-	}
-
-	/**
-	 * Устанавливает реализацию интерфейса взаимодействия с сервисом в
-	 * соответствии с запущенным режимом.
-	 */
-	public void setChatClient(IChatClient chatClient)
-	{
-		altChatClient = chatClient;
-	}
-
-	/**
-	 * Возвращает реализацию интерфейса взаимодействия с сервисом в соответствии
-	 * с запущенным режимом.
-	 */
-	public IChatClient getChatClient()
-	{
-		if (altChatClient != null)
-		{
-			return altChatClient;
-		}
-
-		return this;
-	}
-
-	/** Инициализация ChatClientService целевым BluetoothDevice. */
-	public void init(BluetoothDevice blueDevice)
-	{
-		// TODO: этот механизм проверки режима работы приложения (клиент/сервер)
-		// нужно упростить...
-		// Предотвращение ошибки в случае запуска клиента после сервера
-		if (blueDevice != null)
-		{
-			altChatClient = null;
-		}
-
-		device = blueDevice;
 	}
 
 	// TODO: по идее это должен быть метод приведения к состоянию...
@@ -125,21 +85,16 @@ public class ChatClientService extends Service implements IChatClient
 				Toast.makeText(getBaseContext(), "Ошибка ChatClientService: " + e.getMessage(), Toast.LENGTH_LONG)
 						.show();
 			}
-			
-			// device = null;
+
 			messenger = null;
 		}
 	}
 
-	/**
-	 * Метод, позволяющий определить, в каком режиме сейчас находится сервис
-	 * ChatClientService.
-	 */
-	public boolean IsMaster()
+	public void setMasterDevice(BluetoothDevice mDevice)
 	{
-		return device == null ? true : false;
+		masterDevice = mDevice; 
 	}
-
+	
 	/**
 	 * Класс потока клиента, принимающего сообщения от сервера, к которому он
 	 * подключен.
@@ -174,8 +129,7 @@ public class ChatClientService extends Service implements IChatClient
 
 		public void run()
 		{
-			byte[] buffer = new byte[256];	// buffer store for the stream
-			int bytes;						// bytes returned from read()
+			
 
 			// buffer[0] = (byte) MessageCode.MESSAGE_READ.getId();
 			// write(buffer);
@@ -185,6 +139,9 @@ public class ChatClientService extends Service implements IChatClient
 			{
 				try
 				{
+					byte[] buffer = new byte[256]; // buffer store for the stream
+					int bytes; // bytes returned from read()
+					
 					bytes = mmInStream.read(buffer);
 
 					if (bytes == 65356)
@@ -197,6 +154,9 @@ public class ChatClientService extends Service implements IChatClient
 					// mHandler.obtainMessage( (int) buffer[0], bytes, -1,
 					// buffer).sendToTarget();
 					obtainMessage(buffer);
+					
+					// Обнуление буфера после использования здесь удаляет
+					// сообщения до отправки
 				}
 				catch (IOException e)
 				{
@@ -285,7 +245,7 @@ public class ChatClientService extends Service implements IChatClient
 		try
 		{
 			// MY_UUID is the app's UUID string, also used by the server
-			// code			
+			// code
 
 			UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
 
@@ -303,7 +263,7 @@ public class ChatClientService extends Service implements IChatClient
 			 * "SDP-сервис не найден!", Toast.LENGTH_LONG).show(); return false;
 			 * }
 			 */
-			socket = device.createRfcommSocketToServiceRecord(myid);
+			socket = masterDevice.createRfcommSocketToServiceRecord(myid);
 
 			socket.connect();
 		}

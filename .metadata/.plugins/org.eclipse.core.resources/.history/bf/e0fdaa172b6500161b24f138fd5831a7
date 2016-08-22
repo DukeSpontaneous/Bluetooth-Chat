@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/LinearLayout1"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingBottom="16dp"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingTop="16dp">
+    
+    <!--android:configChanges="orientation|screenSize"-->
+
+    <Button
+        android:id="@+id/buttonSendMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/b_send_message" />
+    
+    <ListView
+        android:id="@+id/listViewChat"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_gravity="fill"
+        android:layout_weight="1" />
+    
+    <EditText
+        android:id="@+id/et_input_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:hint="@string/hint_input_message"
+        android:inputType="textMultiLine" >
+
+        <requestFocus />
+    </EditText>
+
+
+</LinearLayout>

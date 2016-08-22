@@ -68,11 +68,6 @@ public class ChatServerService extends Service implements IChatClient
 		Toast.makeText(getBaseContext(), "ChatServerService onDestroy()", Toast.LENGTH_LONG).show();
 	}
 
-	public void setMessenger(Messenger selectedMessenger)
-	{
-		messenger = selectedMessenger;
-	}
-
 	/** Метод инициализации пары сокет-нить прослушки подключений сервера. */
 	public boolean createServer(BluetoothAdapter bAdapter)
 	{
@@ -125,6 +120,9 @@ public class ChatServerService extends Service implements IChatClient
 		}
 	}
 
+	/**
+	 * Метод синхронизированного добавления ConnectedThread'ов в список сервера.
+	 */
 	private void manageConnectedSocket(BluetoothSocket socket)
 	{
 		ConnectedThread thread = new ConnectedThread(socket);
@@ -244,32 +242,38 @@ public class ChatServerService extends Service implements IChatClient
 		public void run()
 		{
 			InputStream inStream = null;
-			//OutputStream outStream = null;
+			// OutputStream outStream = null;
 
 			try
 			{
 				inStream = socket.getInputStream();
-				//outStream = socket.getOutputStream();
+				// outStream = socket.getOutputStream();
 			}
 			catch (IOException e)
 			{
 				obtainToast("Server - ConnectedThread: ошибка BluetoothSocket.get...Stream: " + e.getMessage());
-			}
+			}			
 
-			byte[] buffer = new byte[256]; // buffer store for the stream
-			int bytes; // bytes returned from read()
-
-			// Считывать сообщения из InputStream до первого выбрасывания исключения
+			// Считывать сообщения из InputStream до первого выбрасывания
+			// исключения
 			while (true)
 			{
 				try
 				{
+					byte[] buffer = new byte[256]; // buffer store for the stream
+					int bytes; // bytes returned from read()					
+					
 					// Чтение входящего потока
 					bytes = inStream.read(buffer);
 
-					// Отправить the obtained bytes сообщение в поток UI activity
+					// Отправить the obtained bytes сообщение в поток UI
+					// activity
 					obtainMessage(buffer);
 					write(socket, buffer);
+
+					// Обнуление буфера после использования здесь удаляет
+					// сообщения до отправки
+
 				}
 				catch (IOException e)
 				{
@@ -341,13 +345,12 @@ public class ChatServerService extends Service implements IChatClient
 	{
 		if (selectedMessenger == null)
 		{
-			Toast.makeText(getBaseContext(), "Server - connectToServer: ошибка provider == null", Toast.LENGTH_LONG)
+			Toast.makeText(getBaseContext(), "Server - setMessenger: ошибка provider == null", Toast.LENGTH_LONG)
 					.show();
 			return false;
 		}
 
 		messenger = selectedMessenger;
-
 		return true;
 	}
 

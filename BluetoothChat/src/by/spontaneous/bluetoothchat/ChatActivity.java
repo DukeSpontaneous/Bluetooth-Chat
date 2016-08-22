@@ -37,8 +37,13 @@ public class ChatActivity extends Activity
 
 	/** Точка доступа к ChatClientService. */
 	private IChatClient chatClient;
+
+	/** Точка доступа к ChatServerService. */
+	private ChatServerService chatServerService;
 	/** Точка доступа к ChatClientService. */
 	private ChatClientService chatClientService;
+
+	private ApplicationMode applicationMode;
 
 	/** Messenger, позволяющий получить доступ к Thread'у ChatActivity. */
 	private Messenger chatUIThreadMessenger = new Messenger(new Handler()
@@ -66,7 +71,7 @@ public class ChatActivity extends Activity
 				listView.smoothScrollToPosition(messagesAdapter.getCount() - 1);
 
 				break;
-				
+
 			// Исключительная ситуация
 			default:
 				super.handleMessage(msg);
@@ -75,22 +80,67 @@ public class ChatActivity extends Activity
 	});
 
 	/** Defines callbacks for service binding, passed to bindService() */
-	private final ServiceConnection clientConnection = new ServiceConnection()
+	private final ServiceConnection serverConnection = new ServiceConnection()
 	{
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service)
 		{
-			// We've bound to LocalService, cast the IBinder and get
-			// LocalService instance
-			chatClientService = ((ChatClientService.LocalBinder) service).getService();
+			// Получение ссылки на объект-сервис при успешном подключении к
+			// chatServerService
+			chatServerService = ((ChatServerService.LocalBinder) service).getService();
 
-			onClientConnected();
+			// TODO: без установки Messenger'а здесь инициализация ChatActivity
+			// прерывается на отправке через него первого же Toast'а
+			// AcceptTread'ом.
+			chatServerService.connectToServer(chatUIThreadMessenger);
+
+			chatClient = chatServerService;
+
+			if (!chatServerService.createServer(bluetoothAdapter))
+			{
+				Toast.makeText(getBaseContext(), "Ошибка ChatServerService: не удалось создать сервер.",
+						Toast.LENGTH_LONG).show();
+				return;
+			}
+
+			// Если режим видимости для клиентских подключений включен, то...
+			if (bluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE)
+			{
+				Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+				discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 60);
+				startActivityForResult(discoverableIntent, REQUEST_DISCOVERABLE_BT);
+			}
+
+			tryConnectToServer();
 		}
 
 		@Override
 		public void onServiceDisconnected(ComponentName arg0)
 		{
-			Toast.makeText(getBaseContext(), "Неявное отключение ServiceConnection clientConnection...",
+			Toast.makeText(getBaseContext(), "Неявное отключение сервиса ServiceConnection serverConnection...",
+					Toast.LENGTH_LONG).show();
+			chatClient = null;
+			chatServerService = null;
+		}
+	};
+
+	private final ServiceConnection clientConnection = new ServiceConnection()
+	{
+		@Override
+		public void onServiceConnected(ComponentName className, IBinder service)
+		{
+			// Получение ссылки на объект-сервис при успешном подключении к
+			// chatClientService
+			chatClientService = ((ChatClientService.LocalBinder) service).getService();
+			chatClient = chatClientService;
+
+			tryConnectToServer();
+		}
+
+		@Override
+		public void onServiceDisconnected(ComponentName arg0)
+		{
+			Toast.makeText(getBaseContext(), "Неявное отключение сервиса ServiceConnection clientConnection...",
 					Toast.LENGTH_LONG).show();
 			chatClient = null;
 			chatClientService = null;
@@ -102,6 +152,16 @@ public class ChatActivity extends Activity
 	{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.chat);
+
+		int modeCode = getIntent().getIntExtra(getResources().getString(R.string.request_code_mode),
+				ApplicationMode.UNKNOWN.getId());
+
+		// TODO: выбрать тип сервиса, с которым следует связаться...
+		applicationMode = ApplicationMode.fromId(modeCode);
+		if (applicationMode == ApplicationMode.UNKNOWN)
+		{
+			this.finish();
+		}
 
 		messages = new ArrayList<String>();
 
@@ -127,7 +187,7 @@ public class ChatActivity extends Activity
 			public void onClick(View v)
 			{
 				EditText text = (EditText) findViewById(R.id.et_input_message);
-				
+
 				// Отправка сообщения в поток UI
 				try
 				{
@@ -150,28 +210,56 @@ public class ChatActivity extends Activity
 	protected void onStart()
 	{
 		super.onStart();
+
 		// Bind to LocalService
-		Intent intent = new Intent(getApplicationContext(), ChatClientService.class);
-		bindService(intent, clientConnection, Context.BIND_AUTO_CREATE);
+
+		// Выбираем целевой сервис
+		Intent intent;
+
+		switch (applicationMode)
+		{
+		case SERVER:
+			intent = new Intent(getApplicationContext(), ChatServerService.class);
+			bindService(intent, serverConnection, Context.BIND_AUTO_CREATE);
+			break;
+		case CLIENT:
+			intent = new Intent(getApplicationContext(), ChatClientService.class);
+			bindService(intent, clientConnection, Context.BIND_AUTO_CREATE);
+			break;
+		default:
+			Toast.makeText(getBaseContext(), "Ошибка ChatActivity: неопределённый режим запуска!", Toast.LENGTH_LONG)
+					.show();
+			break;
+		}
 	}
 
 	@Override
 	protected void onStop()
 	{
 		if (isFinishing())
-		{
 			chatClient.close();
+
+		if (chatServerService != null)
+		{
+			unbindService(serverConnection);
+			chatServerService = null;
 		}
 
 		if (chatClientService != null)
 		{
 			unbindService(clientConnection);
+			chatClientService = null;
 		}
+
+		chatClient = null;
 
 		super.onStop();
 	}
 
-	/** Обработчик успешного подключения ChatActivity к ChatClientService. */
+	/**
+	 * Обработчик кодов, возвращённых после обработки запроса
+	 * REQUEST_DISCOVERABLE_BT.
+	 */
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data)
 	{
@@ -209,26 +297,15 @@ public class ChatActivity extends Activity
 		}
 	};
 
-	/** Обработчик успешного подключения ChatActivity к ChatClientService. */
-	private void onClientConnected()
+	/**
+	 * Попытка специфического подключения к Server'у с учётом выбранного
+	 * Service.
+	 */
+	private void tryConnectToServer()
 	{
-		chatClient = chatClientService.getChatClient();
-		// Если подключение серверное, то...
-		if (chatClientService.IsMaster())
-		{
-			// Если режим видимости для клиентских подключений включен, то...
-			if (bluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE)
-			{
-				Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-				discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 60);
-				startActivityForResult(discoverableIntent, REQUEST_DISCOVERABLE_BT);
-			}
-		}
-
-		//
+		// TODO: тут как будто поздно присваивать этот Messenger для Server'а?
+		// Или это вообще не настоящая связь с Service?!
 		if (chatClient.connectToServer(chatUIThreadMessenger) == false)
-		{
 			this.finish();
-		}
 	};
 }

@@ -13,4 +13,6 @@
     <string name="service_uuid">565b2b42-b215-4717-a10b-f61bd445001f</string>
     <string name="service_name">Testing Server</string>
     
+    <string name="request_code_mode">RequestCodeMode</string>
+    
 </resources>

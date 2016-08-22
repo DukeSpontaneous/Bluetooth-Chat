@@ -2,7 +2,8 @@ package by.spontaneous.bluetoothchat;
 
 enum MessageCode
 {
-	UNKNOWN(0), MESSAGE_READ(1);
+	UNKNOWN(0),
+	MESSAGE_READ(1);
 
 	private final int id;
 
@@ -21,10 +22,8 @@ enum MessageCode
 		MessageCode[] list = MessageCode.values();
 
 		if (code >= 0 && code < list.length)
-		{
 			return list[code];
-		}
-
-		return MessageCode.UNKNOWN;
+		else
+			return MessageCode.UNKNOWN;
 	}
 }

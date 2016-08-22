@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="org.eclipse.andmore.internal.editors.layout.properties.StringXmlPropertyDialog">
+		<item value="465" key="x"/>
+		<item value="350" key="width"/>
+		<item value="424" key="y"/>
+		<item value="136" key="height"/>
+	</section>
+	<section name="org.eclipse.andmore.internal.editors.layout.properties.FlagXmlPropertyDialog">
+		<item value="763" key="x"/>
+		<item value="450" key="width"/>
+		<item value="348" key="y"/>
+		<item value="400" key="height"/>
+	</section>
+</section>

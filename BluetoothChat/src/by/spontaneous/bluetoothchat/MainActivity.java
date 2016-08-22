@@ -45,7 +45,7 @@ public class MainActivity extends Activity
 	private BroadcastReceiver discoveryFinishedReceiver;
 
 	/** Messenger, позволяющий получить доступ к Thread'у MainActivity. */
-	private Messenger msgHandler = new Messenger(new Handler()
+	private Messenger mainUIThreadMessenger = new Messenger(new Handler()
 	{
 		@Override
 		public void handleMessage(Message msg)
@@ -63,30 +63,10 @@ public class MainActivity extends Activity
 		}
 	});
 
-	private ChatServerService chatServerService;
+	/** Точка доступа к ChatClientService. */
 	private ChatClientService chatClientService;
 
 	/** Defines callbacks for service binding, passed to bindService() */
-	private final ServiceConnection serverConnection = new ServiceConnection()
-	{
-		@Override
-		public void onServiceConnected(ComponentName className, IBinder service)
-		{
-			// Получение ссылки на объект-сервис при успешном подключении к
-			// chatServerService
-			chatServerService = ((ChatServerService.LocalBinder) service).getService();
-			chatServerService.setMessenger(msgHandler);
-		}
-
-		@Override
-		public void onServiceDisconnected(ComponentName arg0)
-		{
-			Toast.makeText(getBaseContext(), "Неявное отключение сервиса ServiceConnection serverConnection...",
-					Toast.LENGTH_LONG).show();
-			chatServerService = null;
-		}
-	};
-
 	private final ServiceConnection clientConnection = new ServiceConnection()
 	{
 		@Override
@@ -137,14 +117,6 @@ public class MainActivity extends Activity
 			{
 				sw.setChecked(false);
 
-				if (!chatServerService.createServer(bluetoothAdapter))
-				{
-					Toast.makeText(getBaseContext(), "Ошибка ChatServerService: не удалось создать сервер.",
-							Toast.LENGTH_LONG).show();
-					return;
-				}
-
-				chatClientService.setChatClient(chatServerService);
 				startConnection(null);
 			}
 		});
@@ -185,9 +157,6 @@ public class MainActivity extends Activity
 		}
 
 		// Bind to LocalService
-		Intent intentS = new Intent(getApplicationContext(), ChatServerService.class);
-		bindService(intentS, serverConnection, Context.BIND_AUTO_CREATE);
-
 		Intent intentC = new Intent(getApplicationContext(), ChatClientService.class);
 		bindService(intentC, clientConnection, Context.BIND_AUTO_CREATE);
 	}
@@ -204,10 +173,6 @@ public class MainActivity extends Activity
 			// осуществившего привязку.
 
 			// Unbind from the service
-			if (chatServerService != null)
-			{
-				unbindService(serverConnection);
-			}
 			if (chatClientService != null)
 			{
 				unbindService(clientConnection);
@@ -332,9 +297,18 @@ public class MainActivity extends Activity
 	 */
 	private void startConnection(BluetoothDevice device)
 	{
-		chatClientService.init(device);
-
 		Intent chatActivityIntent = new Intent(this, ChatActivity.class);
+		// Выбранное внешнее серверное устройство равно null?
+		int mode =
+				device == null ?
+						ApplicationMode.SERVER.getId() : ApplicationMode.CLIENT.getId();
+		chatActivityIntent.putExtra(
+				getResources().getString(R.string.request_code_mode), mode);
+		
+		// Если было выбрано серверное устройство, то следует передать его СhatClientService
+		if(device != null)
+			chatClientService.setMasterDevice(device);
+		
 		startActivity(chatActivityIntent);
 	}
 }
