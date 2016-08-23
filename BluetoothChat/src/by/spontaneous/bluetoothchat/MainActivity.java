@@ -12,10 +12,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -38,35 +35,16 @@ public class MainActivity extends Activity
 	private ArrayList<BluetoothDevice> discoveredDevices;
 	/** Список-адаптор обнаруженных потенциальных серверов. */
 	private ArrayAdapter<BluetoothDevice> listAdapter;
-	
+
 	/** Приёмщик сигналов об обнаружении новых устройств. */
 	private BroadcastReceiver discoverDevicesReceiver;
 	/** Приёмщик сигналов об окончании процедуры поиска. */
 	private BroadcastReceiver discoveryFinishedReceiver;
 
-	/** Messenger, позволяющий получить доступ к Thread'у MainActivity. */
-	private Messenger mainUIThreadMessenger = new Messenger(new Handler()
-	{
-		@Override
-		public void handleMessage(Message msg)
-		{
-			switch (msg.what)
-			{
-			case 0:
-				String str = (String) msg.obj;
-				Toast.makeText(getBaseContext(), str, Toast.LENGTH_LONG).show();
-				break;
-
-			default:
-				super.handleMessage(msg);
-			}
-		}
-	});
-
 	/** Точка доступа к ChatClientService. */
 	private ChatClientService chatClientService;
 
-	/** Defines callbacks for service binding, passed to bindService() */
+	/** Объект подключения к Service'у ChatClientService */
 	private final ServiceConnection clientConnection = new ServiceConnection()
 	{
 		@Override
@@ -88,18 +66,17 @@ public class MainActivity extends Activity
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
-	{		
+	{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
 		bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-		if(bluetoothAdapter == null)
+		if (bluetoothAdapter == null)
 		{
 			this.finish();
-			Toast.makeText(getBaseContext(), "Ошибка: не удалось получить BluetoothAdapter.",
-					Toast.LENGTH_LONG).show();
+			Toast.makeText(getBaseContext(), "Ошибка: не удалось получить BluetoothAdapter.", Toast.LENGTH_LONG).show();
 		}
-		
+
 		final Switch sw = (Switch) findViewById(R.id.switch1);
 		sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
 		{
@@ -160,7 +137,7 @@ public class MainActivity extends Activity
 		Intent intentC = new Intent(getApplicationContext(), ChatClientService.class);
 		bindService(intentC, clientConnection, Context.BIND_AUTO_CREATE);
 	}
-	
+
 	@Override
 	protected void onStop()
 	{
@@ -168,15 +145,16 @@ public class MainActivity extends Activity
 		{
 			final Switch sw = (Switch) findViewById(R.id.switch1);
 			sw.setChecked(false);
-			
-			// Но привязанные службы уничтожаются и при простом закрытии Activity
+
+			// Но привязанные службы уничтожаются и при простом закрытии
+			// Activity
 			// осуществившего привязку.
 
 			// Unbind from the service
 			if (chatClientService != null)
 			{
 				unbindService(clientConnection);
-			}	
+			}
 		}
 
 		super.onStop();
@@ -246,7 +224,6 @@ public class MainActivity extends Activity
 							if (!discoveredDevices.contains(device))
 							{
 								discoveredDevices.add(device);
-
 								listAdapter.notifyDataSetChanged();
 							}
 						}
@@ -299,21 +276,14 @@ public class MainActivity extends Activity
 	{
 		Intent chatActivityIntent = new Intent(this, ChatActivity.class);
 		// Выбранное внешнее серверное устройство равно null?
-		int mode =
-				device == null ?
-						ApplicationMode.SERVER.getId() : ApplicationMode.CLIENT.getId();
-		chatActivityIntent.putExtra(
-				getResources().getString(R.string.request_code_mode), mode);
-		
-		// Если было выбрано серверное устройство, то следует передать его СhatClientService
-		if(device != null)
+		int mode = device == null ? ApplicationMode.SERVER.getId() : ApplicationMode.CLIENT.getId();
+		chatActivityIntent.putExtra(getResources().getString(R.string.request_code_mode), mode);
+
+		// Если было выбрано серверное устройство, то следует передать его
+		// СhatClientService
+		if (device != null)
 			chatClientService.setMasterDevice(device);
-		
+
 		startActivity(chatActivityIntent);
 	}
 }
-
-	//TODO: подумать на счёт реализации независимого ChatServerService,
-	// способного существовать без связи (этот Activity будет большую часть
-	// времени находиться в режиме onStop, где он может быть временно (?)
-	// уничтожен из-за нехватке памяти).

@@ -3,6 +3,7 @@ package by.spontaneous.bluetoothchat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.UUID;
 
 import android.app.Service;
@@ -50,7 +51,6 @@ public class ChatClientService extends Service implements IChatClient
 	public void onCreate()
 	{
 		super.onCreate();
-
 		Toast.makeText(getBaseContext(), "ChatClientService onCreate()", Toast.LENGTH_LONG).show();
 	}
 
@@ -101,13 +101,13 @@ public class ChatClientService extends Service implements IChatClient
 	 */
 	private class ConnectedThread extends Thread
 	{
-		private final BluetoothSocket mmSocket;
-		private final InputStream mmInStream;
-		private final OutputStream mmOutStream;
+		private final BluetoothSocket tSocket;
+		private final InputStream tInStream;
+		private final OutputStream tOutStream;
 
 		public ConnectedThread(BluetoothSocket socket)
 		{
-			mmSocket = socket;
+			tSocket = socket;
 			InputStream tmpIn = null;
 			OutputStream tmpOut = null;
 
@@ -120,52 +120,41 @@ public class ChatClientService extends Service implements IChatClient
 			}
 			catch (IOException e)
 			{
-				obtainToast("ChatClientService: ошибка BluetoothSocket.get...Stream: " + e.getMessage());
+				transferToast("ChatClientService: ошибка BluetoothSocket.get...Stream: " + e.getMessage());
 			}
 
-			mmInStream = tmpIn;
-			mmOutStream = tmpOut;
+			tInStream = tmpIn;
+			tOutStream = tmpOut;
 		}
 
 		public void run()
 		{
-			
-
 			// buffer[0] = (byte) MessageCode.MESSAGE_READ.getId();
 			// write(buffer);
 
 			// Keep listening to the InputStream until an exception occurs
 			while (true)
 			{
+				byte[] buffer = new byte[256]; // buffer store for the stream
+				int bytes; // bytes returned from read()
+				
 				try
 				{
-					byte[] buffer = new byte[256]; // buffer store for the stream
-					int bytes; // bytes returned from read()
-					
-					bytes = mmInStream.read(buffer);
+					// Возможно bytes == 65356 это код завершения передачи
+					bytes = tInStream.read(buffer);
 
-					if (bytes == 65356)
-					{
-						obtainToast("Client - ConnectedThread: bytes == 65356");
-						break;
-					}
-
-					// Send the obtained bytes to the UI activity
-					// mHandler.obtainMessage( (int) buffer[0], bytes, -1,
-					// buffer).sendToTarget();
-					obtainMessage(buffer);
-					
-					// Обнуление буфера после использования здесь удаляет
-					// сообщения до отправки
+					//TODO: придумать прикладной протокол 
+					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));					
+					transferResponseToUIThread(msg, MessageCode.fromId(buffer[0]));					
 				}
 				catch (IOException e)
 				{
-					obtainToast("ChatClientService: ошибка while (true){...} " + e.getMessage());
+					transferToast("ChatClientService: ошибка while (true){...} " + e.getMessage());
 					break;
 				}
 			}
 
-			obtainToast("Client - ConnectedThread: run() завершён!");
+			transferToast("Client - ConnectedThread: run() завершён!");
 		}
 
 		/* Call this from the main activity to send data to the remote device */
@@ -173,11 +162,11 @@ public class ChatClientService extends Service implements IChatClient
 		{
 			try
 			{
-				mmOutStream.write(bytes);
+				tOutStream.write(bytes);
 			}
 			catch (IOException e)
 			{
-				obtainToast("Client - ConnectedThread: " + e.getMessage());
+				transferToast("Client - ConnectedThread: " + e.getMessage());
 			}
 		}
 
@@ -186,42 +175,34 @@ public class ChatClientService extends Service implements IChatClient
 		{
 			try
 			{
-				mmSocket.close();
-				obtainToast("Client - ConnectedThread: успешно закрыт!");
+				tSocket.close();
+				transferToast("Client - ConnectedThread: успешно закрыт!");
 			}
 			catch (IOException e)
 			{
-				obtainToast("Client - ConnectedThread: ошибка закрытия! " + e.getMessage());
+				transferToast("Client - ConnectedThread: ошибка закрытия! " + e.getMessage());
 			}
 		}
 	}
 
-	/** Формирование запроса на вывод Toast в Thread'е UI. */
-	private void obtainToast(String str)
+	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */	
+	private void transferResponseToUIThread(String str, MessageCode code)
 	{
 		try
 		{
-			Message msg = Message.obtain(null, 0, 0, 0);
+			Message msg = Message.obtain(null, code.getId(), 0, 0);
 			msg.obj = str;
 			messenger.send(msg);
 		}
 		catch (RemoteException e)
 		{
 		}
-	}
-
-	/** Формирование запроса на вывод Message в Thread'е UI. */
-	private void obtainMessage(byte[] buffer)
+	}	
+	
+	/** Формирование запроса на вывод Toast в Thread'е UI. */
+	private void transferToast(String str)
 	{
-		try
-		{
-			Message msg = Message.obtain(null, 1, 0, 0);
-			msg.obj = buffer;
-			messenger.send(msg);
-		}
-		catch (RemoteException e)
-		{
-		}
+		transferResponseToUIThread(str, MessageCode.TOAST);
 	}
 
 	// Client-реализация IChatClient для ChatActivity
@@ -235,66 +216,66 @@ public class ChatClientService extends Service implements IChatClient
 	public boolean connectToServer(Messenger selectedMessenger)
 	{
 		disconnect();
+		
+		if (selectedMessenger != null)
+		{
+			messenger = selectedMessenger;
+			
+			try
+			{
+				// MY_UUID is the app's UUID string, also used by the server
+				// code
 
-		if (selectedMessenger == null)
+				UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
+				
+				/*
+				 * ParcelUuid[] uuids = device.getUuids();
+				 * 
+				 * boolean is_contained = false;
+				 * 
+				 * for (ParcelUuid uuid : uuids) {
+				 * //Toast.makeText(getBaseContext(), uuid.getUuid().toString(),
+				 * Toast.LENGTH_LONG).show(); if (uuid.getUuid() == myid) {
+				 * is_contained = true; break; } }
+				 * 
+				 * if (is_contained == false) { Toast.makeText(getBaseContext(),
+				 * "SDP-сервис не найден!", Toast.LENGTH_LONG).show(); return false;
+				 * }
+				 */
+				socket = masterDevice.createRfcommSocketToServiceRecord(myid);
+
+				socket.connect();
+			}
+			catch (IOException e)
+			{
+				// Основная ошибка здесь: попытка подключения к устройству, на
+				// котором не поднят нужный сервис Service Discovery Protocol (SDP)
+				Toast.makeText(getBaseContext(), e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+				// disconnect();
+				return false;
+			}			
+
+			connectedThread = new ConnectedThread(socket);
+			connectedThread.start();
+
+			return true;
+		}
+		else
 		{
 			Toast.makeText(getBaseContext(), "Ошибка ChatClientService: provider == null", Toast.LENGTH_LONG).show();
 			return false;
 		}
-
-		try
-		{
-			// MY_UUID is the app's UUID string, also used by the server
-			// code
-
-			UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
-
-			/*
-			 * ParcelUuid[] uuids = device.getUuids();
-			 * 
-			 * boolean is_contained = false;
-			 * 
-			 * for (ParcelUuid uuid : uuids) {
-			 * //Toast.makeText(getBaseContext(), uuid.getUuid().toString(),
-			 * Toast.LENGTH_LONG).show(); if (uuid.getUuid() == myid) {
-			 * is_contained = true; break; } }
-			 * 
-			 * if (is_contained == false) { Toast.makeText(getBaseContext(),
-			 * "SDP-сервис не найден!", Toast.LENGTH_LONG).show(); return false;
-			 * }
-			 */
-			socket = masterDevice.createRfcommSocketToServiceRecord(myid);
-
-			socket.connect();
-		}
-		catch (IOException e)
-		{
-			// Основная ошибка здесь: попытка подключения к устройству, на
-			// котором не поднят нужный сервис Service Discovery Protocol (SDP)
-			Toast.makeText(getBaseContext(), e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
-			// disconnect();
-			return false;
-		}
-
-		// TODO: равен самому себе что ли?
-		// ...теоретически ссылка на самого себя...
-		messenger = selectedMessenger;
-
-		connectedThread = new ConnectedThread(socket);
-		connectedThread.start();
-
-		return true;
 	}
 
 	@Override
-	public void sendMessage(String str)
+	public void sendResponse(byte[] resp)
 	{
 		OutputStream outStream = null;
 
 		try
 		{
 			outStream = socket.getOutputStream();
-			outStream.write(str.getBytes());
+			outStream.write(resp);
 		}
 		catch (IOException e)
 		{

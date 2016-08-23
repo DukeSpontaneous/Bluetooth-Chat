@@ -2,7 +2,9 @@ package by.spontaneous.bluetoothchat;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.UUID;
 
 import android.app.Service;
@@ -139,7 +141,6 @@ public class ChatServerService extends Service implements IChatClient
 	/** Класс потока сервера, составляющего список входящих подключений. */
 	private class AcceptThread extends Thread
 	{
-
 		private final BluetoothServerSocket serverSocket;
 
 		public AcceptThread(BluetoothServerSocket socket)
@@ -155,14 +156,14 @@ public class ChatServerService extends Service implements IChatClient
 			{
 				try
 				{
-					obtainToast("AcceptThread: serverSocket.accept() начат!");
+					transferToast("AcceptThread: serverSocket.accept() начат!");
 					socket = serverSocket.accept();
-					obtainToast("AcceptThread: serverSocket.accept() принят!");
+					transferToast("AcceptThread: serverSocket.accept() принят!");
 
 				}
 				catch (IOException e)
 				{
-					obtainToast("AcceptThread: ошибка serverSocket.accept()" + e.getMessage());
+					transferToast("AcceptThread: ошибка serverSocket.accept()" + e.getMessage());
 					break;
 				}
 				// If a connection was accepted
@@ -171,7 +172,7 @@ public class ChatServerService extends Service implements IChatClient
 					// Do work to manage the connection (in a separate thread)
 					manageConnectedSocket(socket);
 
-					obtainToast("AcceptThread: подключение добавлено!");
+					transferToast("AcceptThread: подключение добавлено!");
 				}
 			}
 		}
@@ -188,14 +189,14 @@ public class ChatServerService extends Service implements IChatClient
 					thread.cancel();
 				}
 
-				obtainToast("Server - AcceptThread: все ConnectedThread успешно завершены!");
+				transferToast("Server - AcceptThread: все ConnectedThread успешно завершены!");
 
 				connectedThreads.clear();
 				list.clear();
 			}
 			catch (IOException e)
 			{
-				obtainToast("Server - AcceptThread: ошибка serverSocket.cancel()" + e.getMessage());
+				transferToast("Server - AcceptThread: ошибка serverSocket.cancel()" + e.getMessage());
 			}
 		}
 
@@ -205,7 +206,7 @@ public class ChatServerService extends Service implements IChatClient
 	 * Метод отправки сообщения сервером, рассылающий его всем клиентам, кроме
 	 * отправителя.
 	 */
-	public void write(BluetoothSocket socket, byte[] bytes)
+	private void broadcasting(BluetoothSocket socket, byte[] bytes)
 	{
 		synchronized (connectedThreads)
 		{
@@ -232,52 +233,56 @@ public class ChatServerService extends Service implements IChatClient
 	/** Класс потоков сервера, принимающих сообщения подключенных клиентов. */
 	private class ConnectedThread extends Thread
 	{
-		private final BluetoothSocket socket;
+		private final BluetoothSocket tSocket;
+		private final InputStream tInStream;
+		private final OutputStream tOutStream;
 
-		public ConnectedThread(BluetoothSocket sock)
+		public ConnectedThread(BluetoothSocket socket)
 		{
-			socket = sock;
+			tSocket = socket;
+			InputStream tmpIn = null;
+			OutputStream tmpOut = null;
+
+			// Get the input and output streams, using temp objects because
+			// member streams are final
+			try
+			{
+				tmpIn = socket.getInputStream();
+				tmpOut = socket.getOutputStream();
+			}
+			catch (IOException e)
+			{
+				transferToast("ChatServerService: ошибка BluetoothSocket.get...Stream: " + e.getMessage());
+			}
+
+			tInStream = tmpIn;
+			tOutStream = tmpOut;
 		}
 
 		public void run()
 		{
-			InputStream inStream = null;
-			// OutputStream outStream = null;
-
-			try
-			{
-				inStream = socket.getInputStream();
-				// outStream = socket.getOutputStream();
-			}
-			catch (IOException e)
-			{
-				obtainToast("Server - ConnectedThread: ошибка BluetoothSocket.get...Stream: " + e.getMessage());
-			}			
-
 			// Считывать сообщения из InputStream до первого выбрасывания
 			// исключения
 			while (true)
 			{
+				byte[] buffer = new byte[256]; // buffer store for the stream
+				int bytes; // bytes returned from read()
+				
 				try
 				{
-					byte[] buffer = new byte[256]; // buffer store for the stream
-					int bytes; // bytes returned from read()					
+					// Возможно bytes == 65356 это код завершения передачи
+					bytes = tInStream.read(buffer);
 					
-					// Чтение входящего потока
-					bytes = inStream.read(buffer);
-
-					// Отправить the obtained bytes сообщение в поток UI
-					// activity
-					obtainMessage(buffer);
-					write(socket, buffer);
-
-					// Обнуление буфера после использования здесь удаляет
-					// сообщения до отправки
-
+					//TODO: придумать прикладной протокол 
+					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));					
+					transferResponseToUIThread(msg, MessageCode.fromId(buffer[0]));
+										
+					// Отправить всем клиентам, кроме отправителя
+					broadcasting(tSocket, buffer);
 				}
 				catch (IOException e)
 				{
-					obtainToast("ChatServerService: ошибка while (true){...} " + e.getMessage());
+					transferToast("ChatServerService: ошибка while (true){...} " + e.getMessage());
 					break;
 				}
 			}
@@ -285,7 +290,7 @@ public class ChatServerService extends Service implements IChatClient
 			synchronized (connectedThreads)
 			{
 				connectedThreads.remove(this);
-				list.remove(socket);
+				list.remove(tSocket);
 			}
 
 			this.cancel();
@@ -296,41 +301,33 @@ public class ChatServerService extends Service implements IChatClient
 		{
 			try
 			{
-				socket.close();
+				tSocket.close();
 			}
 			catch (IOException e)
 			{
-				obtainToast("Server - ConnectedThread: cancel() " + e.getMessage());
+				transferToast("Server - ConnectedThread: cancel() " + e.getMessage());
 			}
 		}
 	}
-
-	/** Формирование запроса на вывод Toast в Thread'е UI. */
-	private void obtainToast(String str)
+	
+	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */	
+	private void transferResponseToUIThread(String str, MessageCode code)
 	{
 		try
 		{
-			Message msg = Message.obtain(null, 0, 0, 0);
+			Message msg = Message.obtain(null, code.getId(), 0, 0);
 			msg.obj = str;
 			messenger.send(msg);
 		}
 		catch (RemoteException e)
 		{
 		}
-	}
-
-	/** Формирование запроса на вывод Message в Thread'е UI. */
-	private void obtainMessage(byte[] buffer)
+	}	
+	
+	/** Формирование запроса на вывод Toast в Thread'е UI. */
+	private void transferToast(String str)
 	{
-		try
-		{
-			Message msg = Message.obtain(null, 1, 0, 0);
-			msg.obj = buffer;
-			messenger.send(msg);
-		}
-		catch (RemoteException e)
-		{
-		}
+		transferResponseToUIThread(str, MessageCode.TOAST);
 	}
 
 	// Server-реализация IChatClient для ChatActivity
@@ -343,21 +340,23 @@ public class ChatServerService extends Service implements IChatClient
 	@Override
 	public boolean connectToServer(Messenger selectedMessenger)
 	{
-		if (selectedMessenger == null)
+		if (selectedMessenger != null)
+		{
+			messenger = selectedMessenger;
+			return true;
+		}		
+		else
 		{
 			Toast.makeText(getBaseContext(), "Server - setMessenger: ошибка provider == null", Toast.LENGTH_LONG)
 					.show();
 			return false;
 		}
-
-		messenger = selectedMessenger;
-		return true;
 	}
 
 	@Override
-	public void sendMessage(String str)
+	public void sendResponse(byte[] resp)
 	{
-		write(null, str.getBytes());
+		broadcasting(null, resp);
 	}
 
 	@Override

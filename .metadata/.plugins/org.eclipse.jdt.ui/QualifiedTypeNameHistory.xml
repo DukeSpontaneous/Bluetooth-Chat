@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-<fullyQualifiedTypeName name="java.util.UUID"/>
-<fullyQualifiedTypeName name="org.apache.http.conn.ManagedClientConnection"/>
 <fullyQualifiedTypeName name="com.example.p002_bluetooth_client.MainActivity.ConnectedThread"/>
 <fullyQualifiedTypeName name="by.spontaneous.p001_bluetooth_server.MainActivity.AcceptThread"/>
 <fullyQualifiedTypeName name="com.example.p002_bluetooth_client.MainActivity.MessageCode"/>
@@ -46,7 +44,6 @@
 <fullyQualifiedTypeName name="android.util.Log"/>
 <fullyQualifiedTypeName name="java.lang.Thread"/>
 <fullyQualifiedTypeName name="android.R.string"/>
-<fullyQualifiedTypeName name="java.lang.System"/>
 <fullyQualifiedTypeName name="android.os.Handler"/>
 <fullyQualifiedTypeName name="android.os.Looper"/>
 <fullyQualifiedTypeName name="java.lang.Runnable"/>
@@ -59,5 +56,8 @@
 <fullyQualifiedTypeName name="android.os.Message"/>
 <fullyQualifiedTypeName name="java.lang.Exception"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ApplicationMode"/>
+<fullyQualifiedTypeName name="java.util.Arrays"/>
+<fullyQualifiedTypeName name="java.lang.System"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.MessageCode"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatActivity"/>
 </qualifiedTypeNameHistroy>
