@@ -180,11 +180,11 @@ public class ChatActivity extends Activity
 			public void onClick(View v)
 			{
 				EditText text = (EditText) findViewById(R.id.et_input_message);
-				
-				if(!text.getText().toString().equals(""))
+
+				if (!text.getText().toString().equals(""))
 				{
-					// Отправка сообщения в поток UI
-					// TODO: хоть тут действие и происходит в потоке UI...
+					// Отправка сообщения в интерфейсный Messenger Thread'а UI
+					// TODO: хоть тут действие и происходит в Thread'е UI...
 					try
 					{
 						Message msg = Message.obtain(null, MessageCode.MESSAGE.getId(), 0, 0);
@@ -199,13 +199,15 @@ public class ChatActivity extends Activity
 					// ограничением на длину введённого сообщения в 255 байт.
 					byte[] buffer = new byte[256];
 					buffer[0] = (byte) MessageCode.MESSAGE.getId();
+					// Кодировка по умолчанию двухбайтовая с однобайтовым пробелом... o_0
 					System.arraycopy(text.getText().toString().getBytes(), 0, buffer, 1,
-							text.getText().length() < 255 ? text.getText().length() : 255);
+							text.getText().toString().getBytes().length < 255
+									? text.getText().toString().getBytes().length : 255);
 
 					// Отправка сообщения в соккеты
 					chatClient.sendResponse(buffer);
 					text.getText().clear();
-				}				
+				}
 			}
 		});
 	}

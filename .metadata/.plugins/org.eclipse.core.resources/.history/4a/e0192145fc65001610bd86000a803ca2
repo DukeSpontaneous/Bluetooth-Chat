@@ -1,6 +1,0 @@
-package by.spontaneous.bluetoothchat;
-
-public enum ApplicationMode
-{
-
-}

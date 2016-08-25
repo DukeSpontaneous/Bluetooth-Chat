@@ -141,9 +141,10 @@ public class ChatClientService extends Service implements IChatClient
 				try
 				{
 					// Возможно bytes == 65356 это код завершения передачи
-					bytes = tInStream.read(buffer);
+					// Возвращает число по размеру буфера o_0, даже если считал меньше
+					bytes = tInStream.read(buffer);					
 
-					//TODO: придумать прикладной протокол 
+					//TODO: придумать прикладной протокол
 					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));					
 					transferResponseToUIThread(msg, MessageCode.fromId(buffer[0]));					
 				}

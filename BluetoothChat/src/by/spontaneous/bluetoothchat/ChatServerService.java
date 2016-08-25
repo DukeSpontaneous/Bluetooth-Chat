@@ -267,16 +267,17 @@ public class ChatServerService extends Service implements IChatClient
 			{
 				byte[] buffer = new byte[256]; // buffer store for the stream
 				int bytes; // bytes returned from read()
-				
+
 				try
 				{
 					// Возможно bytes == 65356 это код завершения передачи
+					// Возвращает число по размеру буфера o_0, даже если считал меньше
 					bytes = tInStream.read(buffer);
-					
-					//TODO: придумать прикладной протокол 
-					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));					
+
+					// TODO: придумать прикладной протокол
+					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));
 					transferResponseToUIThread(msg, MessageCode.fromId(buffer[0]));
-										
+
 					// Отправить всем клиентам, кроме отправителя
 					broadcasting(tSocket, buffer);
 				}
@@ -309,8 +310,8 @@ public class ChatServerService extends Service implements IChatClient
 			}
 		}
 	}
-	
-	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */	
+
+	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */
 	private void transferResponseToUIThread(String str, MessageCode code)
 	{
 		try
@@ -322,8 +323,8 @@ public class ChatServerService extends Service implements IChatClient
 		catch (RemoteException e)
 		{
 		}
-	}	
-	
+	}
+
 	/** Формирование запроса на вывод Toast в Thread'е UI. */
 	private void transferToast(String str)
 	{
@@ -344,7 +345,7 @@ public class ChatServerService extends Service implements IChatClient
 		{
 			messenger = selectedMessenger;
 			return true;
-		}		
+		}
 		else
 		{
 			Toast.makeText(getBaseContext(), "Server - setMessenger: ошибка provider == null", Toast.LENGTH_LONG)
