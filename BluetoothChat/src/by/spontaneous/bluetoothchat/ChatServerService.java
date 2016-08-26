@@ -86,18 +86,33 @@ public class ChatServerService extends Service implements IChatClient
 		{
 			Toast.makeText(getBaseContext(), "Ошибка Server - createServer(): " + e.getMessage(), Toast.LENGTH_LONG)
 					.show();
+			transferResponseToUIThread(null, MessageCode.QUIT);
 			return false;
 		}
 
 		acceptThread = new AcceptThread(serverSocket);
+		acceptThread.setDaemon(true);
 		acceptThread.start();
 
 		return true;
 	}
 
-	/** Метод уничтожения пары сокет-нить прослушки подключений сервера. */
+	/**
+	 * Метод уничтожения Accept-пары Сокет-Нить прослушки подключений сервера.
+	 */
 	public void destroyServer()
 	{
+		// Остановить нить приёма новых клиентов
+		if (acceptThread != null)
+		{
+			acceptThread.cancel();
+			acceptThread = null;
+
+			Toast.makeText(getBaseContext(), "Server - AcceptThread: AcceptThread успешно завершён!", Toast.LENGTH_LONG)
+					.show();
+		}
+
+		// А этот сокет вообще останавливается в кенселе... что он тут делает...
 		if (serverSocket != null)
 		{
 			try
@@ -111,15 +126,6 @@ public class ChatServerService extends Service implements IChatClient
 						Toast.LENGTH_LONG).show();
 			}
 		}
-
-		if (acceptThread != null)
-		{
-			acceptThread.cancel();
-			acceptThread = null;
-
-			Toast.makeText(getBaseContext(), "Server - AcceptThread: AcceptThread успешно завершён!", Toast.LENGTH_LONG)
-					.show();
-		}
 	}
 
 	/**
@@ -127,6 +133,7 @@ public class ChatServerService extends Service implements IChatClient
 	 */
 	private void manageConnectedSocket(BluetoothSocket socket)
 	{
+		// TODO: возможно стоит подписывать потоки методом setName()
 		ConnectedThread thread = new ConnectedThread(socket);
 
 		synchronized (connectedThreads)
@@ -135,6 +142,7 @@ public class ChatServerService extends Service implements IChatClient
 			list.add(socket);
 		}
 
+		thread.setDaemon(true);
 		thread.start();
 	}
 
@@ -163,8 +171,13 @@ public class ChatServerService extends Service implements IChatClient
 				}
 				catch (IOException e)
 				{
+					// TODO: будто бы работает нормально, но конструкция подозрительная...
+					// Достижимо только через IOException прослушки...
+					// ...но его генерирует и закрытие Activity... o_0
+					
 					transferToast("AcceptThread: ошибка serverSocket.accept()" + e.getMessage());
-					break;
+					transferResponseToUIThread(null, MessageCode.QUIT);
+					return;
 				}
 				// If a connection was accepted
 				if (socket != null)
@@ -208,6 +221,10 @@ public class ChatServerService extends Service implements IChatClient
 	 */
 	private void broadcasting(BluetoothSocket socket, byte[] bytes)
 	{
+		// TODO: ожидать подтверждение нужно где-то тут... но тут
+		// всплывает пробелма с широковещанием...
+		// Серия неподтверждений будет расцениваться как потеря связи...
+
 		synchronized (connectedThreads)
 		{
 			for (BluetoothSocket sock : list)
@@ -220,10 +237,11 @@ public class ChatServerService extends Service implements IChatClient
 					}
 					catch (IOException e)
 					{
-						Toast.makeText(getBaseContext(),
-								"ChatServerService: ошибка write(BluetoothSocket socket, byte[] bytes):"
-										+ e.getMessage(),
+						Toast.makeText(getBaseContext(), "Stream.write IOException:" + e.getMessage(),
 								Toast.LENGTH_LONG).show();
+						
+						// TODO: Это признак потери связи с клиентом...
+						// ...закрыть и удалить пару поток-соккет...
 					}
 				}
 			}
@@ -271,7 +289,8 @@ public class ChatServerService extends Service implements IChatClient
 				try
 				{
 					// Возможно bytes == 65356 это код завершения передачи
-					// Возвращает число по размеру буфера o_0, даже если считал меньше
+					// Возвращает число по размеру буфера o_0, даже если считал
+					// меньше
 					bytes = tInStream.read(buffer);
 
 					// TODO: придумать прикладной протокол

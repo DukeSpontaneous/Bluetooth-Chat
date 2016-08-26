@@ -5,8 +5,10 @@ enum MessageCode
 	UNKNOWN(0),
 	
 	TOAST(1),
-	MESSAGE(2),
-	CONFIRMATION(3);
+	MESSAGE(2),	
+	WAITING(3),
+	CONFIRMATION(4),
+	QUIT(5);
 
 	private final int id;
 

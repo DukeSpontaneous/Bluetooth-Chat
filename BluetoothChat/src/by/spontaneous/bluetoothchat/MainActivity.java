@@ -77,7 +77,7 @@ public class MainActivity extends Activity
 			Toast.makeText(getBaseContext(), "Ошибка: не удалось получить BluetoothAdapter.", Toast.LENGTH_LONG).show();
 		}
 
-		final Switch sw = (Switch) findViewById(R.id.switch1);
+		final Switch sw = (Switch) findViewById(R.id.switchDiscovery);
 		sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
 		{
 			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
@@ -143,7 +143,7 @@ public class MainActivity extends Activity
 	{
 		if (isFinishing())
 		{
-			final Switch sw = (Switch) findViewById(R.id.switch1);
+			final Switch sw = (Switch) findViewById(R.id.switchDiscovery);
 			sw.setChecked(false);
 
 			// Но привязанные службы уничтожаются и при простом закрытии

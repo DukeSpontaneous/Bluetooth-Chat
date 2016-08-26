@@ -3,6 +3,7 @@ package by.spontaneous.bluetoothchat;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.content.ComponentName;
 import android.content.Context;
@@ -44,6 +45,7 @@ public class ChatActivity extends Activity
 	private ChatClientService chatClientService;
 
 	private ApplicationMode applicationMode;
+	ProgressDialog pDialog;
 
 	/** Messenger, позволяющий получить доступ к Thread'у ChatActivity. */
 	private Messenger chatUIThreadMessenger = new Messenger(new Handler()
@@ -65,11 +67,20 @@ public class ChatActivity extends Activity
 				messages.add(str);
 				messagesAdapter.notifyDataSetChanged();
 
-				// TODO: может найти какое-то ^событие обновление адаптора
+				// TODO: может найти какое-то событие обновление адаптора
 				// (событие обновления ListView не происходит, если добавленное
 				// сообщение сейчас вне зоны видимости)?
 				final ListView listView = (ListView) findViewById(R.id.listViewChat);
 				listView.smoothScrollToPosition(messagesAdapter.getCount() - 1);
+				break;
+			case WAITING:
+				pDialog.show();
+				break;
+			case CONFIRMATION:
+				pDialog.dismiss();
+				break;
+			case QUIT:
+				quitChatActivity();
 				break;
 			// Исключительная ситуация
 			case UNKNOWN:
@@ -199,7 +210,8 @@ public class ChatActivity extends Activity
 					// ограничением на длину введённого сообщения в 255 байт.
 					byte[] buffer = new byte[256];
 					buffer[0] = (byte) MessageCode.MESSAGE.getId();
-					// Кодировка по умолчанию двухбайтовая с однобайтовым пробелом... o_0
+					// Кодировка по умолчанию двухбайтовая с однобайтовым
+					// пробелом... o_0
 					System.arraycopy(text.getText().toString().getBytes(), 0, buffer, 1,
 							text.getText().toString().getBytes().length < 255
 									? text.getText().toString().getBytes().length : 255);
@@ -210,6 +222,17 @@ public class ChatActivity extends Activity
 				}
 			}
 		});
+		
+		pDialog = new ProgressDialog(this);
+		pDialog.setTitle("Отправка сообщения");
+		pDialog.setMessage("Ожидание подтверждения...");
+	}
+
+	@Override
+	protected void onDestroy()
+	{
+		// TODO Auto-generated method stub
+		super.onDestroy();
 	}
 
 	@Override
@@ -253,7 +276,9 @@ public class ChatActivity extends Activity
 	protected void onStop()
 	{
 		if (isFinishing())
+		{
 			chatClient.close();
+		}
 
 		if (chatServerService != null)
 		{
@@ -317,6 +342,11 @@ public class ChatActivity extends Activity
 	private void tryConnectToService()
 	{
 		if (chatClient.connectToServer(chatUIThreadMessenger) == false)
-			this.finish();
+			quitChatActivity();
 	};
+
+	private void quitChatActivity()
+	{
+		this.finish();
+	}
 }

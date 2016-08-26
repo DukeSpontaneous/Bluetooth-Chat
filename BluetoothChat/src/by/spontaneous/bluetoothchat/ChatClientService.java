@@ -92,9 +92,33 @@ public class ChatClientService extends Service implements IChatClient
 
 	public void setMasterDevice(BluetoothDevice mDevice)
 	{
-		masterDevice = mDevice; 
+		masterDevice = mDevice;
 	}
-	
+
+	/**
+	 * Пока этот метод создан просто для параллельности с ChatSercverService,
+	 * где broadcast используется множественно.
+	 */
+	private void unicasting(byte[] bytes)
+	{
+		// TODO: вообще тут следовало бы ожидать подтверждения отправки
+		
+		OutputStream outStream = null;
+
+		try
+		{
+			outStream = socket.getOutputStream();
+			outStream.write(bytes);
+		}
+		catch (IOException e)
+		{
+			// Это признак потери связи с сервером.
+			Toast.makeText(getBaseContext(), "Stream.write IOException:" + e.getMessage(),
+					Toast.LENGTH_LONG).show();
+			transferResponseToUIThread(null, MessageCode.QUIT);
+		}
+	}
+
 	/**
 	 * Класс потока клиента, принимающего сообщения от сервера, к которому он
 	 * подключен.
@@ -137,25 +161,25 @@ public class ChatClientService extends Service implements IChatClient
 			{
 				byte[] buffer = new byte[256]; // buffer store for the stream
 				int bytes; // bytes returned from read()
-				
+
 				try
 				{
 					// Возможно bytes == 65356 это код завершения передачи
-					// Возвращает число по размеру буфера o_0, даже если считал меньше
-					bytes = tInStream.read(buffer);					
+					// Возвращает число по размеру буфера o_0, даже если считал
+					// меньше
+					bytes = tInStream.read(buffer);
 
-					//TODO: придумать прикладной протокол
-					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));					
-					transferResponseToUIThread(msg, MessageCode.fromId(buffer[0]));					
+					// TODO: придумать прикладной протокол
+					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));
+					transferResponseToUIThread(msg, MessageCode.fromId(buffer[0]));
 				}
 				catch (IOException e)
 				{
-					transferToast("ChatClientService: ошибка while (true){...} " + e.getMessage());
-					break;
+					transferToast("ClientService: ConnectedThread IOException Stream.read():" + e.getMessage());
+					transferResponseToUIThread(null, MessageCode.QUIT);
+					return;
 				}
 			}
-
-			transferToast("Client - ConnectedThread: run() завершён!");
 		}
 
 		/* Call this from the main activity to send data to the remote device */
@@ -186,7 +210,7 @@ public class ChatClientService extends Service implements IChatClient
 		}
 	}
 
-	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */	
+	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */
 	private void transferResponseToUIThread(String str, MessageCode code)
 	{
 		try
@@ -198,8 +222,8 @@ public class ChatClientService extends Service implements IChatClient
 		catch (RemoteException e)
 		{
 		}
-	}	
-	
+	}
+
 	/** Формирование запроса на вывод Toast в Thread'е UI. */
 	private void transferToast(String str)
 	{
@@ -217,18 +241,18 @@ public class ChatClientService extends Service implements IChatClient
 	public boolean connectToServer(Messenger selectedMessenger)
 	{
 		disconnect();
-		
+
 		if (selectedMessenger != null)
 		{
 			messenger = selectedMessenger;
-			
+
 			try
 			{
 				// MY_UUID is the app's UUID string, also used by the server
 				// code
 
 				UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
-				
+
 				/*
 				 * ParcelUuid[] uuids = device.getUuids();
 				 * 
@@ -240,8 +264,8 @@ public class ChatClientService extends Service implements IChatClient
 				 * is_contained = true; break; } }
 				 * 
 				 * if (is_contained == false) { Toast.makeText(getBaseContext(),
-				 * "SDP-сервис не найден!", Toast.LENGTH_LONG).show(); return false;
-				 * }
+				 * "SDP-сервис не найден!", Toast.LENGTH_LONG).show(); return
+				 * false; }
 				 */
 				socket = masterDevice.createRfcommSocketToServiceRecord(myid);
 
@@ -250,13 +274,15 @@ public class ChatClientService extends Service implements IChatClient
 			catch (IOException e)
 			{
 				// Основная ошибка здесь: попытка подключения к устройству, на
-				// котором не поднят нужный сервис Service Discovery Protocol (SDP)
+				// котором не поднят нужный сервис Service Discovery Protocol
+				// (SDP)
 				Toast.makeText(getBaseContext(), e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
 				// disconnect();
 				return false;
-			}			
+			}
 
 			connectedThread = new ConnectedThread(socket);
+			connectedThread.setDaemon(true);
 			connectedThread.start();
 
 			return true;
@@ -271,18 +297,7 @@ public class ChatClientService extends Service implements IChatClient
 	@Override
 	public void sendResponse(byte[] resp)
 	{
-		OutputStream outStream = null;
-
-		try
-		{
-			outStream = socket.getOutputStream();
-			outStream.write(resp);
-		}
-		catch (IOException e)
-		{
-			Toast.makeText(getBaseContext(), "ChatClientService: ошибка sendMessage(String str):" + e.getMessage(),
-					Toast.LENGTH_LONG).show();
-		}
+		unicasting(resp);
 	}
 
 	@Override
