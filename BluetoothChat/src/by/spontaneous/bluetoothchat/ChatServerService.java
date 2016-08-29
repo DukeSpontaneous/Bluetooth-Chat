@@ -331,7 +331,7 @@ public class ChatServerService extends Service implements IChatClient
 	}
 
 	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */
-	private void transferResponseToUIThread(String str, MessageCode code)
+	private synchronized void transferResponseToUIThread(String str, MessageCode code)
 	{
 		try
 		{

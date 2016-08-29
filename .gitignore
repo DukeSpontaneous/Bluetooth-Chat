@@ -40,5 +40,5 @@ captures/
 *.jks
 
 # Eclipse-Android IDE
-.metadata/.plugins/
+.metadata/.plugins/org.eclipse.core.resources/.history/
 .recommenders/

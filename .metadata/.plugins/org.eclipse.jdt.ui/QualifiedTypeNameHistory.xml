@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="com.example.p002_bluetooth_client.MainActivity.ConnectedThread"/>
 <fullyQualifiedTypeName name="by.spontaneous.p001_bluetooth_server.MainActivity.AcceptThread"/>
 <fullyQualifiedTypeName name="com.example.p002_bluetooth_client.MainActivity.MessageCode"/>
 <fullyQualifiedTypeName name="android.widget.AdapterView.OnItemClickListener"/>
@@ -18,6 +19,7 @@
 <fullyQualifiedTypeName name="android.content.ComponentName"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.LocalBinder"/>
 <fullyQualifiedTypeName name="android.bluetooth.BluetoothServerSocket"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.AcceptThread"/>
 <fullyQualifiedTypeName name="java.nio.channels.Channels"/>
 <fullyQualifiedTypeName name="java.nio.channels.ReadableByteChannel"/>
 <fullyQualifiedTypeName name="java.nio.channels.Selector"/>
@@ -49,6 +51,7 @@
 <fullyQualifiedTypeName name="android.os.RemoteException"/>
 <fullyQualifiedTypeName name="android.os.Messenger"/>
 <fullyQualifiedTypeName name="android.os.ParcelUuid"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatClientService.ConnectedThread"/>
 <fullyQualifiedTypeName name="android.os.IBinder"/>
 <fullyQualifiedTypeName name="android.os.Message"/>
 <fullyQualifiedTypeName name="java.lang.Exception"/>
@@ -57,7 +60,4 @@
 <fullyQualifiedTypeName name="java.lang.System"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.MessageCode"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatActivity"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatClientService.ConnectedThread"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.AcceptThread"/>
-<fullyQualifiedTypeName name="android.app.ProgressDialog"/>
 </qualifiedTypeNameHistroy>
