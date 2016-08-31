@@ -29,30 +29,30 @@ public class MainActivity extends Activity
 	/** Вариант допустимого кода для включения Bluetooth устройства. */
 	private static final int REQUEST_ENABLE_BT = 1;
 	/** Адаптер умолчательного Bluetooth устройсва Android. */
-	private BluetoothAdapter bluetoothAdapter;
+	private final BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
 	/** Список обнаруженых потенциальных серверов BluetoothDevice. */
-	private ArrayList<BluetoothDevice> discoveredDevices;
+	private ArrayList<BluetoothDevice> mDiscoveredDevices;
 	/** Список-адаптор обнаруженных потенциальных серверов. */
-	private ArrayAdapter<BluetoothDevice> listAdapter;
+	private ArrayAdapter<BluetoothDevice> mListAdapter;
 
 	/** Приёмщик сигналов об обнаружении новых устройств. */
-	private BroadcastReceiver discoverDevicesReceiver;
+	private BroadcastReceiver mDiscoverDevicesReceiver;
 	/** Приёмщик сигналов об окончании процедуры поиска. */
-	private BroadcastReceiver discoveryFinishedReceiver;
+	private BroadcastReceiver mDiscoveryFinishedReceiver;
 
 	/** Точка доступа к ChatClientService. */
-	private ChatClientService chatClientService;
+	private ChatClientService mChatClientService;
 
 	/** Объект подключения к Service'у ChatClientService */
-	private final ServiceConnection clientConnection = new ServiceConnection()
+	private final ServiceConnection mClientConnection = new ServiceConnection()
 	{
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service)
 		{
 			// Получение ссылки на объект-сервис при успешном подключении к
 			// chatClientService
-			chatClientService = ((ChatClientService.LocalBinder) service).getService();
+			mChatClientService = ((ChatClientService.LocalBinder) service).getService();
 		}
 
 		@Override
@@ -60,18 +60,17 @@ public class MainActivity extends Activity
 		{
 			Toast.makeText(getBaseContext(), "Неявное отключение сервиса ServiceConnection clientConnection...",
 					Toast.LENGTH_LONG).show();
-			chatClientService = null;
+			mChatClientService = null;
 		}
 	};
-
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-		bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-		if (bluetoothAdapter == null)
+		if (mBluetoothAdapter == null)
 		{
 			this.finish();
 			Toast.makeText(getBaseContext(), "Ошибка: не удалось получить BluetoothAdapter.", Toast.LENGTH_LONG).show();
@@ -106,14 +105,14 @@ public class MainActivity extends Activity
 			{
 				sw.setChecked(false);
 
-				BluetoothDevice device = listAdapter.getItem(position);
+				BluetoothDevice device = mListAdapter.getItem(position);
 				startConnection(device);
 			}
 		});
 
-		discoveredDevices = new ArrayList<BluetoothDevice>();
+		mDiscoveredDevices = new ArrayList<BluetoothDevice>();
 
-		listAdapter = new ArrayAdapter<BluetoothDevice>(this, android.R.layout.simple_list_item_1, discoveredDevices)
+		mListAdapter = new ArrayAdapter<BluetoothDevice>(this, android.R.layout.simple_list_item_1, mDiscoveredDevices)
 		{
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent)
@@ -125,9 +124,9 @@ public class MainActivity extends Activity
 			}
 		};
 
-		listView.setAdapter(listAdapter);
+		listView.setAdapter(mListAdapter);
 
-		if (bluetoothAdapter != null && !bluetoothAdapter.isEnabled())
+		if (mBluetoothAdapter != null && !mBluetoothAdapter.isEnabled())
 		{
 			Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 			startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
@@ -135,7 +134,7 @@ public class MainActivity extends Activity
 
 		// Bind to LocalService
 		Intent intentC = new Intent(getApplicationContext(), ChatClientService.class);
-		bindService(intentC, clientConnection, Context.BIND_AUTO_CREATE);
+		bindService(intentC, mClientConnection, Context.BIND_AUTO_CREATE);
 	}
 
 	@Override
@@ -151,9 +150,9 @@ public class MainActivity extends Activity
 			// осуществившего привязку.
 
 			// Unbind from the service
-			if (chatClientService != null)
+			if (mChatClientService != null)
 			{
-				unbindService(clientConnection);
+				unbindService(mClientConnection);
 			}
 		}
 
@@ -205,12 +204,12 @@ public class MainActivity extends Activity
 	{
 		if (isChecked)
 		{
-			discoveredDevices.clear();
-			listAdapter.notifyDataSetChanged();
+			mDiscoveredDevices.clear();
+			mListAdapter.notifyDataSetChanged();
 
-			if (discoverDevicesReceiver == null)
+			if (mDiscoverDevicesReceiver == null)
 			{
-				discoverDevicesReceiver = new BroadcastReceiver()
+				mDiscoverDevicesReceiver = new BroadcastReceiver()
 				{
 					@Override
 					public void onReceive(Context context, Intent intent)
@@ -221,19 +220,19 @@ public class MainActivity extends Activity
 						{
 							BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
-							if (!discoveredDevices.contains(device))
+							if (!mDiscoveredDevices.contains(device))
 							{
-								discoveredDevices.add(device);
-								listAdapter.notifyDataSetChanged();
+								mDiscoveredDevices.add(device);
+								mListAdapter.notifyDataSetChanged();
 							}
 						}
 					}
 				};
 			}
 
-			if (discoveryFinishedReceiver == null)
+			if (mDiscoveryFinishedReceiver == null)
 			{
-				discoveryFinishedReceiver = new BroadcastReceiver()
+				mDiscoveryFinishedReceiver = new BroadcastReceiver()
 				{
 					@Override
 					public void onReceive(Context context, Intent intent)
@@ -246,24 +245,24 @@ public class MainActivity extends Activity
 
 						// unregisterReceiver(discoveryFinishedReceiver);
 
-						bluetoothAdapter.startDiscovery();
+						mBluetoothAdapter.startDiscovery();
 					}
 				};
 			}
 
-			registerReceiver(discoverDevicesReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
-			registerReceiver(discoveryFinishedReceiver, new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
+			registerReceiver(mDiscoverDevicesReceiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
+			registerReceiver(mDiscoveryFinishedReceiver, new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
 
 			// progressDialog = ProgressDialog.show(this, "Поиск устройств",
 			// "Подождите...");
 
-			bluetoothAdapter.startDiscovery();
+			mBluetoothAdapter.startDiscovery();
 		}
 		else
 		{
-			bluetoothAdapter.cancelDiscovery();
-			unregisterReceiver(discoveryFinishedReceiver);
-			unregisterReceiver(discoverDevicesReceiver);
+			mBluetoothAdapter.cancelDiscovery();
+			unregisterReceiver(mDiscoveryFinishedReceiver);
+			unregisterReceiver(mDiscoverDevicesReceiver);
 		}
 	}
 
@@ -282,7 +281,7 @@ public class MainActivity extends Activity
 		// Если было выбрано серверное устройство, то следует передать его
 		// СhatClientService
 		if (device != null)
-			chatClientService.setMasterDevice(device);
+			mChatClientService.setMasterDevice(device);
 
 		startActivity(chatActivityIntent);
 	}

@@ -3,7 +3,6 @@ package by.spontaneous.bluetoothchat;
 import java.util.ArrayList;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.content.ComponentName;
 import android.content.Context;
@@ -29,32 +28,35 @@ public class ChatActivity extends Activity
 	/** Вариант допустимого кода для включения Bluetooth устройства. */
 	private static final int REQUEST_DISCOVERABLE_BT = 2;
 	/** Адаптер умолчательного Bluetooth устройсва Android. */
-	private BluetoothAdapter bluetoothAdapter;
+	private final BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
 	/** Список сообщений. */
-	private ArrayList<String> messages;
+	private ArrayList<String> mMessages;
 	/** Список-адаптер сообщений. */
-	private ArrayAdapter<String> messagesAdapter;
+	private ArrayAdapter<String> mMessagesAdapter;
 
 	/** Точка доступа к ChatClientService. */
-	private IChatClient chatClient;
+	private IChatClient mChatClient;
 
 	/** Точка доступа к ChatServerService. */
-	private ChatServerService chatServerService;
+	private ChatServerService mChatServerService;
 	/** Точка доступа к ChatClientService. */
-	private ChatClientService chatClientService;
+	private ChatClientService mChatClientService;
 
-	private ApplicationMode applicationMode;
-	ProgressDialog pDialog;
+	private ApplicationMode mApplicationMode;
+	//private ProgressDialog mProgressDialog;
 
 	/** Messenger, позволяющий получить доступ к Thread'у ChatActivity. */
-	private Messenger chatUIThreadMessenger = new Messenger(new Handler()
+	private Messenger mChatUIThreadMessenger = new Messenger(new Handler()
 	{
 		@Override
 		public void handleMessage(Message msg)
 		{
+			final ListView listView = (ListView) findViewById(R.id.listViewChat);
+			final Button buttonSend = (Button) findViewById(R.id.buttonSendMessage);
+			
 			String str;
-			switch (MessageCode.fromId(msg.what))
+			switch (MessageCode.fromId((byte) msg.what))
 			{
 			// Доступ к выводу Toast'ов для Thread'ов прослушивающих Socket'ы
 			case TOAST:
@@ -64,20 +66,23 @@ public class ChatActivity extends Activity
 			// Вывод сообщений в лог чата
 			case MESSAGE:
 				str = (String) msg.obj;
-				messages.add(str);
-				messagesAdapter.notifyDataSetChanged();
+				mMessages.add(str);
+				mMessagesAdapter.notifyDataSetChanged();
 
 				// TODO: может найти какое-то событие обновление адаптора
 				// (событие обновления ListView не происходит, если добавленное
 				// сообщение сейчас вне зоны видимости)?
-				final ListView listView = (ListView) findViewById(R.id.listViewChat);
-				listView.smoothScrollToPosition(messagesAdapter.getCount() - 1);
+				listView.smoothScrollToPosition(mMessagesAdapter.getCount() - 1);
 				break;
 			case WAITING:
-				pDialog.show();
+				//mProgressDialog.show();
+				buttonSend.setText("Ожидание доставки...");
+				buttonSend.setEnabled(false);
 				break;
 			case CONFIRMATION:
-				pDialog.dismiss();
+				//mProgressDialog.dismiss();
+				buttonSend.setText("Отправить");
+				buttonSend.setEnabled(true);
 				break;
 			case QUIT:
 				quitChatActivity();
@@ -93,20 +98,20 @@ public class ChatActivity extends Activity
 	});
 
 	/** Объект подключения к Service'у ChatServerService */
-	private final ServiceConnection serverConnection = new ServiceConnection()
+	private final ServiceConnection mServerConnection = new ServiceConnection()
 	{
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service)
 		{
 			// Получение ссылки на объект-сервис при успешном подключении к
 			// chatServerService
-			chatServerService = ((ChatServerService.LocalBinder) service).getService();
-			chatClient = chatServerService;
+			mChatServerService = ((ChatServerService.LocalBinder) service).getService();
+			mChatClient = mChatServerService;
 
 			tryConnectToService();
 
 			// СhatServerService.createServer() нужен Messenger!!!
-			if (!chatServerService.createServer(bluetoothAdapter))
+			if (!mChatServerService.createServer(mBluetoothAdapter))
 			{
 				Toast.makeText(getBaseContext(), "Ошибка ChatServerService: не удалось создать сервер.",
 						Toast.LENGTH_LONG).show();
@@ -119,20 +124,20 @@ public class ChatActivity extends Activity
 		{
 			Toast.makeText(getBaseContext(), "Неявное отключение сервиса ServiceConnection serverConnection...",
 					Toast.LENGTH_LONG).show();
-			chatClient = null;
-			chatServerService = null;
+			mChatClient = null;
+			mChatServerService = null;
 		}
 	};
 	/** Объект подключения к Service'у ChatClientService */
-	private final ServiceConnection clientConnection = new ServiceConnection()
+	private final ServiceConnection mClientConnection = new ServiceConnection()
 	{
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service)
 		{
 			// Получение ссылки на объект-сервис при успешном подключении к
 			// chatClientService
-			chatClientService = ((ChatClientService.LocalBinder) service).getService();
-			chatClient = chatClientService;
+			mChatClientService = ((ChatClientService.LocalBinder) service).getService();
+			mChatClient = mChatClientService;
 
 			tryConnectToService();
 		}
@@ -142,8 +147,8 @@ public class ChatActivity extends Activity
 		{
 			Toast.makeText(getBaseContext(), "Неявное отключение сервиса ServiceConnection clientConnection...",
 					Toast.LENGTH_LONG).show();
-			chatClient = null;
-			chatClientService = null;
+			mChatClient = null;
+			mChatClientService = null;
 		}
 	};
 
@@ -152,9 +157,8 @@ public class ChatActivity extends Activity
 	{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.chat);
-
-		bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-		if (bluetoothAdapter == null)
+		
+		if (mBluetoothAdapter == null)
 		{
 			this.finish();
 			Toast.makeText(getBaseContext(), "Ошибка: не удалось получить BluetoothAdapter.", Toast.LENGTH_LONG).show();
@@ -162,14 +166,14 @@ public class ChatActivity extends Activity
 
 		int modeCode = getIntent().getIntExtra(getResources().getString(R.string.request_code_mode),
 				ApplicationMode.UNKNOWN.getId());
-		applicationMode = ApplicationMode.fromId(modeCode);
-		if (applicationMode == ApplicationMode.UNKNOWN)
+		mApplicationMode = ApplicationMode.fromId(modeCode);
+		if (mApplicationMode == ApplicationMode.UNKNOWN)
 		{
 			this.finish();
 		}
 
-		messages = new ArrayList<String>();
-		messagesAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, messages)
+		mMessages = new ArrayList<String>();
+		mMessagesAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mMessages)
 		{
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent)
@@ -182,7 +186,7 @@ public class ChatActivity extends Activity
 		};
 
 		final ListView listView = (ListView) findViewById(R.id.listViewChat);
-		listView.setAdapter(messagesAdapter);
+		listView.setAdapter(mMessagesAdapter);
 
 		final Button btn = (Button) findViewById(R.id.buttonSendMessage);
 		btn.setOnClickListener(new View.OnClickListener()
@@ -190,42 +194,31 @@ public class ChatActivity extends Activity
 			@Override
 			public void onClick(View v)
 			{
-				EditText text = (EditText) findViewById(R.id.et_input_message);
+				final EditText text = (EditText) findViewById(R.id.et_input_message);
 
 				if (!text.getText().toString().equals(""))
 				{
-					// Отправка сообщения в интерфейсный Messenger Thread'а UI
-					// TODO: хоть тут действие и происходит в Thread'е UI...
+					// Отправка сообщения самому себе
 					try
 					{
-						Message msg = Message.obtain(null, MessageCode.MESSAGE.getId(), 0, 0);
+						final Message msg = Message.obtain(null, MessageCode.MESSAGE.getId(), 0, 0);
 						msg.obj = text.getText().toString();
-						chatUIThreadMessenger.send(msg);
+						mChatUIThreadMessenger.send(msg);
 					}
 					catch (RemoteException e)
 					{
 					}
 
-					// Формирование сообщения согласно выбранному протоколу, с
-					// ограничением на длину введённого сообщения в 255 байт.
-					byte[] buffer = new byte[256];
-					buffer[0] = (byte) MessageCode.MESSAGE.getId();
-					// Кодировка по умолчанию двухбайтовая с однобайтовым
-					// пробелом... o_0
-					System.arraycopy(text.getText().toString().getBytes(), 0, buffer, 1,
-							text.getText().toString().getBytes().length < 255
-									? text.getText().toString().getBytes().length : 255);
-
 					// Отправка сообщения в соккеты
-					chatClient.sendResponse(buffer);
+					mChatClient.sendResponse(text.getText().toString());
 					text.getText().clear();
 				}
 			}
 		});
-		
-		pDialog = new ProgressDialog(this);
-		pDialog.setTitle("Отправка сообщения");
-		pDialog.setMessage("Ожидание подтверждения...");
+
+		//mProgressDialog = new ProgressDialog(this);
+		//mProgressDialog.setTitle("Отправка сообщения");
+		//mProgressDialog.setMessage("Ожидание подтверждения...");
 	}
 
 	@Override
@@ -245,15 +238,15 @@ public class ChatActivity extends Activity
 		// Выбираем целевой сервис
 		Intent intent;
 
-		switch (applicationMode)
+		switch (mApplicationMode)
 		{
 		case SERVER:
 			intent = new Intent(getApplicationContext(), ChatServerService.class);
-			bindService(intent, serverConnection, Context.BIND_AUTO_CREATE);
+			bindService(intent, mServerConnection, Context.BIND_AUTO_CREATE);
 
 			// Если режим обнаружаемости для неспаренных устройств не
 			// активирован, то...
-			if (bluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE)
+			if (mBluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE)
 			{
 				Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
 				discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 60);
@@ -262,7 +255,7 @@ public class ChatActivity extends Activity
 			break;
 		case CLIENT:
 			intent = new Intent(getApplicationContext(), ChatClientService.class);
-			bindService(intent, clientConnection, Context.BIND_AUTO_CREATE);
+			bindService(intent, mClientConnection, Context.BIND_AUTO_CREATE);
 			break;
 		default:
 			Toast.makeText(getBaseContext(), "Ошибка ChatActivity: неопределённый режим запуска!", Toast.LENGTH_LONG)
@@ -277,22 +270,22 @@ public class ChatActivity extends Activity
 	{
 		if (isFinishing())
 		{
-			chatClient.close();
+			mChatClient.close();
 		}
 
-		if (chatServerService != null)
+		if (mChatServerService != null)
 		{
-			unbindService(serverConnection);
-			chatServerService = null;
+			unbindService(mServerConnection);
+			mChatServerService = null;
 		}
 
-		if (chatClientService != null)
+		if (mChatClientService != null)
 		{
-			unbindService(clientConnection);
-			chatClientService = null;
+			unbindService(mClientConnection);
+			mChatClientService = null;
 		}
 
-		chatClient = null;
+		mChatClient = null;
 
 		super.onStop();
 	}
@@ -341,10 +334,10 @@ public class ChatActivity extends Activity
 	/** Попытка передать Messenger для Thread'ов выбранного Service. */
 	private void tryConnectToService()
 	{
-		if (chatClient.connectToServer(chatUIThreadMessenger) == false)
+		if (mChatClient.connectToServer(mChatUIThreadMessenger) == false)
 			quitChatActivity();
 	};
-
+	
 	private void quitChatActivity()
 	{
 		this.finish();

@@ -16,7 +16,7 @@ public interface IChatClient
 	public boolean connectToServer(Messenger handler);
 
 	/** Интерфейс отправки сообщения из EditText (поле ввода в ChatActivity). */
-	public void sendResponse(byte[] response);
+	public void sendResponse(String msg);
 
 	/** Интерфейс реализации завершения работы ChatActivity. */
 	public void close();

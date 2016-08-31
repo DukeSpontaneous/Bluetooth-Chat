@@ -2,27 +2,27 @@ package by.spontaneous.bluetoothchat;
 
 enum MessageCode
 {	
-	UNKNOWN(0),
+	UNKNOWN((byte)0),
 	
-	TOAST(1),
-	MESSAGE(2),	
-	WAITING(3),
-	CONFIRMATION(4),
-	QUIT(5);
+	TOAST((byte)1),
+	MESSAGE((byte)2),	
+	WAITING((byte)3),
+	CONFIRMATION((byte)4),
+	QUIT((byte)5);
 
-	private final int id;
+	private final byte id;
 
-	MessageCode(int code)
+	MessageCode(byte code)
 	{
 		id = code;
 	}
 
-	public int getId()
+	public byte getId()
 	{
 		return id;
 	}
 
-	public static MessageCode fromId(int code)
+	public static MessageCode fromId(byte code)
 	{
 		MessageCode[] list = MessageCode.values();
 		

@@ -36,16 +36,23 @@ public class ChatClientService extends Service implements IChatClient
 	}
 
 	/** Messenger взаимодействия с GUI. */
-	private Messenger messenger;
+	private Messenger mMessenger;
 
 	/** Socket связи с сервером. */
-	private BluetoothSocket socket;
+	private BluetoothSocket mServerSocket;
 
 	/** Thread клиентского ожидания новых сообщений от сервера. */
-	private ConnectedThread connectedThread;
+	private ConnectedThread mConnectedThread;
+
+	/** ID последнего исходящего сообщения. */
+	private int mLastOutputMsgNumber = 0;
+	/** Содержание последнего исходящего сообщения. */
+	private String mConfirmationMessage;
+	/** Список клиентов, не подтвердивших доставку последнего сообщения. */
+	private volatile boolean mWaitingConfirmation = false;
 
 	/** Внешний целевой BluetoothDevice-сервер (null для самого сервера). */
-	private BluetoothDevice masterDevice;
+	private BluetoothDevice mMasterDevice;
 
 	@Override
 	public void onCreate()
@@ -58,9 +65,7 @@ public class ChatClientService extends Service implements IChatClient
 	public void onDestroy()
 	{
 		super.onDestroy();
-
 		disconnect();
-
 		Toast.makeText(getBaseContext(), "ChatClientService onDestroy()", Toast.LENGTH_LONG).show();
 	}
 
@@ -68,16 +73,16 @@ public class ChatClientService extends Service implements IChatClient
 	/** Обрыв Thread'а ChatClientService и обунление мессенджера. */
 	public void disconnect()
 	{
-		if (connectedThread != null)
+		if (mConnectedThread != null)
 		{
-			connectedThread.cancel();
-			connectedThread = null;
+			mConnectedThread.cancel();
+			mConnectedThread = null;
 
 			try
 			{
-				if (socket != null)
+				if (mServerSocket != null)
 				{
-					socket.close();
+					mServerSocket.close();
 				}
 			}
 			catch (IOException e)
@@ -86,35 +91,42 @@ public class ChatClientService extends Service implements IChatClient
 						.show();
 			}
 
-			messenger = null;
+			mMessenger = null;
 		}
 	}
 
 	public void setMasterDevice(BluetoothDevice mDevice)
 	{
-		masterDevice = mDevice;
+		mMasterDevice = mDevice;
 	}
 
 	/**
 	 * Пока этот метод создан просто для параллельности с ChatSercverService,
 	 * где broadcast используется множественно.
 	 */
-	private void unicasting(byte[] bytes)
+	private void unicasting(MessagePacket packet)
 	{
-		// TODO: вообще тут следовало бы ожидать подтверждения отправки
-		
-		OutputStream outStream = null;
+		// TODO: ожидать подтверждение нужно где-то тут... но тут
+		// всплывает пробелма с широковещанием...
+		// Серия неподтверждений будет расцениваться как потеря связи...
+
+		// Отправленное сообщение
+		mConfirmationMessage = packet.message;
 
 		try
 		{
-			outStream = socket.getOutputStream();
-			outStream.write(bytes);
+			synchronized (mServerSocket)
+			{
+				final OutputStream outStream = mServerSocket.getOutputStream();
+				outStream.write(packet.bytes);
+			}
+			mWaitingConfirmation = true;
+			transferResponseToUIThread(null, MessageCode.WAITING);
 		}
 		catch (IOException e)
 		{
 			// Это признак потери связи с сервером.
-			Toast.makeText(getBaseContext(), "Stream.write IOException:" + e.getMessage(),
-					Toast.LENGTH_LONG).show();
+			Toast.makeText(getBaseContext(), "Stream.write IOException:" + e.getMessage(), Toast.LENGTH_LONG).show();
 			transferResponseToUIThread(null, MessageCode.QUIT);
 		}
 	}
@@ -128,6 +140,8 @@ public class ChatClientService extends Service implements IChatClient
 		private final BluetoothSocket tSocket;
 		private final InputStream tInStream;
 		private final OutputStream tOutStream;
+		
+		private int tLastInputMsgNumber = 0;
 
 		public ConnectedThread(BluetoothSocket socket)
 		{
@@ -144,7 +158,7 @@ public class ChatClientService extends Service implements IChatClient
 			}
 			catch (IOException e)
 			{
-				transferToast("ChatClientService: ошибка BluetoothSocket.get...Stream: " + e.getMessage());
+				transferToast("Ошибка BluetoothSocket.get...Stream: " + e.getMessage());
 			}
 
 			tInStream = tmpIn;
@@ -152,47 +166,101 @@ public class ChatClientService extends Service implements IChatClient
 		}
 
 		public void run()
-		{
-			// buffer[0] = (byte) MessageCode.MESSAGE_READ.getId();
-			// write(buffer);
-
-			// Keep listening to the InputStream until an exception occurs
+		{			
+			// Цикл прослушки
 			while (true)
 			{
-				byte[] buffer = new byte[256]; // buffer store for the stream
-				int bytes; // bytes returned from read()
-
+				// TODO: Размер, конечно, под вопросом...
+				final byte[] buffer = new byte[256];
+				
+				int bCount;
 				try
 				{
-					// Возможно bytes == 65356 это код завершения передачи
-					// Возвращает число по размеру буфера o_0, даже если считал
-					// меньше
-					bytes = tInStream.read(buffer);
-
-					// TODO: придумать прикладной протокол
-					String msg = new String(Arrays.copyOfRange(buffer, 1, bytes - 1));
-					transferResponseToUIThread(msg, MessageCode.fromId(buffer[0]));
+					// TODO: Возможно возвращённые bytes == 65356 это код
+					// завершения передачи, но обычно возвращает число по
+					// размеру буфера o_0, (даже если считал меньше).
+					bCount = tInStream.read(buffer);
 				}
 				catch (IOException e)
 				{
-					transferToast("ClientService: ConnectedThread IOException Stream.read():" + e.getMessage());
-					transferResponseToUIThread(null, MessageCode.QUIT);
-					return;
+					transferToast("Ошибка прослушки сервера:" + e.getMessage());
+					break;
+				}
+				
+				byte[] bPacket = Arrays.copyOfRange(buffer, 0, bCount);
+
+				// Пакет придуманного прикладного протокола
+				final MessagePacket packet = new MessagePacket(bPacket);
+
+				if (!packet.checkHash())
+				{
+					transferToast("Ошибка: полученное сообщение повреждено!");
+					continue;
+				}
+
+				switch (packet.code)
+				{
+				case MESSAGE:
+				{
+					// Сразу нужно отправить подтверждение в любом случае
+					synchronized (mServerSocket)
+					{
+						try
+						{
+							tOutStream.write(new MessagePacket(MessageCode.CONFIRMATION, packet.id, null).bytes);
+						}
+						catch (IOException e)
+						{
+							transferToast("Ошибка отправки CONFIRMATION: " + e.getMessage());
+							continue;
+						}
+					}
+
+					// TODO: вообще теоретически последовательность должна
+					// быть непрерывна, за исключением случая, когда клиент
+					// подключается к серверу, на котором до этого
+					// происходил обмен сообщениями
+
+					if (packet.id <= tLastInputMsgNumber)
+					{
+						transferToast("Ошибка Клиента: ID последнего принятого сообщения >= анализируемому!");
+						continue;
+					}
+
+					transferResponseToUIThread(packet.message, packet.code);
+
+					tLastInputMsgNumber = packet.id;
+					break;
+				}
+				case CONFIRMATION:
+				{
+					if(packet.id == mLastOutputMsgNumber)
+					{
+						if (mWaitingConfirmation == true)
+						{
+							mWaitingConfirmation = false;
+							transferResponseToUIThread(null, MessageCode.CONFIRMATION);
+						}
+						else
+						{
+							Toast.makeText(getBaseContext(), "Предупреждение: пришло не ожидаемое подтверждение!",
+									Toast.LENGTH_LONG).show();
+						}					
+					}
+					else
+					{
+						Toast.makeText(getBaseContext(), "Предупреждение: пришло устаревшее подтверждение!",
+								Toast.LENGTH_LONG).show();
+					}					
+					break;
+				}
+				default:
+					break;
 				}
 			}
-		}
+			// Конец бесконечного цикла прослушки
 
-		/* Call this from the main activity to send data to the remote device */
-		public void write(byte[] bytes)
-		{
-			try
-			{
-				tOutStream.write(bytes);
-			}
-			catch (IOException e)
-			{
-				transferToast("Client - ConnectedThread: " + e.getMessage());
-			}
+			this.cancel();			
 		}
 
 		/* Call this from the main activity to shutdown the connection */
@@ -201,12 +269,13 @@ public class ChatClientService extends Service implements IChatClient
 			try
 			{
 				tSocket.close();
-				transferToast("Client - ConnectedThread: успешно закрыт!");
+				transferToast("Соединение с сервером потеряно. Socket закрыт успешно.");
 			}
 			catch (IOException e)
 			{
-				transferToast("Client - ConnectedThread: ошибка закрытия! " + e.getMessage());
+				transferToast("Закрытие Thread'а:  ошибка закрытия Socket'а сервера: " + e.getMessage());
 			}
+			transferResponseToUIThread(null, MessageCode.QUIT);
 		}
 	}
 
@@ -217,7 +286,7 @@ public class ChatClientService extends Service implements IChatClient
 		{
 			Message msg = Message.obtain(null, code.getId(), 0, 0);
 			msg.obj = str;
-			messenger.send(msg);
+			mMessenger.send(msg);
 		}
 		catch (RemoteException e)
 		{
@@ -244,7 +313,7 @@ public class ChatClientService extends Service implements IChatClient
 
 		if (selectedMessenger != null)
 		{
-			messenger = selectedMessenger;
+			mMessenger = selectedMessenger;
 
 			try
 			{
@@ -252,7 +321,6 @@ public class ChatClientService extends Service implements IChatClient
 				// code
 
 				UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
-
 				/*
 				 * ParcelUuid[] uuids = device.getUuids();
 				 * 
@@ -267,9 +335,8 @@ public class ChatClientService extends Service implements IChatClient
 				 * "SDP-сервис не найден!", Toast.LENGTH_LONG).show(); return
 				 * false; }
 				 */
-				socket = masterDevice.createRfcommSocketToServiceRecord(myid);
-
-				socket.connect();
+				mServerSocket = mMasterDevice.createRfcommSocketToServiceRecord(myid);
+				mServerSocket.connect();
 			}
 			catch (IOException e)
 			{
@@ -281,9 +348,9 @@ public class ChatClientService extends Service implements IChatClient
 				return false;
 			}
 
-			connectedThread = new ConnectedThread(socket);
-			connectedThread.setDaemon(true);
-			connectedThread.start();
+			mConnectedThread = new ConnectedThread(mServerSocket);
+			mConnectedThread.setDaemon(true);
+			mConnectedThread.start();
 
 			return true;
 		}
@@ -295,9 +362,10 @@ public class ChatClientService extends Service implements IChatClient
 	}
 
 	@Override
-	public void sendResponse(byte[] resp)
+	public void sendResponse(String msg)
 	{
-		unicasting(resp);
+		// Формирование сообщения согласно выбранному протоколу
+		unicasting(new MessagePacket(MessageCode.MESSAGE, ++mLastOutputMsgNumber, msg));
 	}
 
 	@Override
