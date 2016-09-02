@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-<fullyQualifiedTypeName name="com.example.p002_bluetooth_client.MainActivity.MessageCode"/>
 <fullyQualifiedTypeName name="android.widget.AdapterView.OnItemClickListener"/>
 <fullyQualifiedTypeName name="android.widget.AdapterView"/>
 <fullyQualifiedTypeName name="by.spontaneous.p001_bluetooth_server.R.string"/>
@@ -22,7 +21,6 @@
 <fullyQualifiedTypeName name="java.nio.channels.ReadableByteChannel"/>
 <fullyQualifiedTypeName name="java.nio.channels.Selector"/>
 <fullyQualifiedTypeName name="android.bluetooth.BluetoothSocket"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.ConnectedThread"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.MessageProvider"/>
 <fullyQualifiedTypeName name="android.content.Intent"/>
 <fullyQualifiedTypeName name="java.lang.Class"/>
@@ -60,4 +58,6 @@
 <fullyQualifiedTypeName name="java.util.ArrayList"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.MessageCode"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.MessagePacket"/>
+<fullyQualifiedTypeName name="java.io.InputStream"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.ConnectedThread"/>
 </qualifiedTypeNameHistroy>

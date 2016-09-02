@@ -1,8 +1,6 @@
 package by.spontaneous.bluetoothchat;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -38,16 +36,13 @@ public class ChatClientService extends Service implements IChatClient
 	/** Messenger взаимодействия с GUI. */
 	private Messenger mMessenger;
 
-	/** Socket связи с сервером. */
-	private BluetoothSocket mServerSocket;
-
 	/** Thread клиентского ожидания новых сообщений от сервера. */
-	private ConnectedThread mConnectedThread;
+	private SyntheticThread mConnectedThread;
 
 	/** ID последнего исходящего сообщения. */
-	private int mLastOutputMsgNumber = 0;
+	private volatile int mLastOutputMsgNumber = 0;
 	/** Содержание последнего исходящего сообщения. */
-	private String mConfirmationMessage;
+	private volatile String mConfirmationMessage;
 	/** Список клиентов, не подтвердивших доставку последнего сообщения. */
 	private volatile boolean mWaitingConfirmation = false;
 
@@ -78,19 +73,6 @@ public class ChatClientService extends Service implements IChatClient
 			mConnectedThread.cancel();
 			mConnectedThread = null;
 
-			try
-			{
-				if (mServerSocket != null)
-				{
-					mServerSocket.close();
-				}
-			}
-			catch (IOException e)
-			{
-				Toast.makeText(getBaseContext(), "Ошибка ChatClientService: " + e.getMessage(), Toast.LENGTH_LONG)
-						.show();
-			}
-
 			mMessenger = null;
 		}
 	}
@@ -106,19 +88,14 @@ public class ChatClientService extends Service implements IChatClient
 	 */
 	private void unicasting(MessagePacket packet)
 	{
-		// TODO: ожидать подтверждение нужно где-то тут... но тут
-		// всплывает пробелма с широковещанием...
-		// Серия неподтверждений будет расцениваться как потеря связи...
-
 		// Отправленное сообщение
 		mConfirmationMessage = packet.message;
 
 		try
 		{
-			synchronized (mServerSocket)
+			synchronized (mConnectedThread)
 			{
-				final OutputStream outStream = mServerSocket.getOutputStream();
-				outStream.write(packet.bytes);
+				mConnectedThread.tOutStream.write(packet.bytes);
 			}
 			mWaitingConfirmation = true;
 			transferResponseToUIThread(null, MessageCode.WAITING);
@@ -131,54 +108,26 @@ public class ChatClientService extends Service implements IChatClient
 		}
 	}
 
-	/**
-	 * Класс потока клиента, принимающего сообщения от сервера, к которому он
-	 * подключен.
-	 */
-	private class ConnectedThread extends Thread
+	/** Класс потока клиента, принимающий сообщения подключенного сервера. */
+	private class SyntheticThread extends Communication
 	{
-		private final BluetoothSocket tSocket;
-		private final InputStream tInStream;
-		private final OutputStream tOutStream;
-		
-		private int tLastInputMsgNumber = 0;
-
-		public ConnectedThread(BluetoothSocket socket)
+		public SyntheticThread(BluetoothSocket socket)
 		{
-			tSocket = socket;
-			InputStream tmpIn = null;
-			OutputStream tmpOut = null;
+			super(socket);
+		};
 
-			// Get the input and output streams, using temp objects because
-			// member streams are final
-			try
-			{
-				tmpIn = socket.getInputStream();
-				tmpOut = socket.getOutputStream();
-			}
-			catch (IOException e)
-			{
-				transferToast("Ошибка BluetoothSocket.get...Stream: " + e.getMessage());
-			}
-
-			tInStream = tmpIn;
-			tOutStream = tmpOut;
-		}
-
+		@Override
 		public void run()
-		{			
+		{
+			// TODO: Размер, конечно, под вопросом...
+			final byte[] buffer = new byte[256];
+			int bCount;
+
 			// Цикл прослушки
 			while (true)
 			{
-				// TODO: Размер, конечно, под вопросом...
-				final byte[] buffer = new byte[256];
-				
-				int bCount;
 				try
 				{
-					// TODO: Возможно возвращённые bytes == 65356 это код
-					// завершения передачи, но обычно возвращает число по
-					// размеру буфера o_0, (даже если считал меньше).
 					bCount = tInStream.read(buffer);
 				}
 				catch (IOException e)
@@ -186,7 +135,7 @@ public class ChatClientService extends Service implements IChatClient
 					transferToast("Ошибка прослушки сервера:" + e.getMessage());
 					break;
 				}
-				
+
 				byte[] bPacket = Arrays.copyOfRange(buffer, 0, bCount);
 
 				// Пакет придуманного прикладного протокола
@@ -203,7 +152,7 @@ public class ChatClientService extends Service implements IChatClient
 				case MESSAGE:
 				{
 					// Сразу нужно отправить подтверждение в любом случае
-					synchronized (mServerSocket)
+					synchronized (mConnectedThread)
 					{
 						try
 						{
@@ -234,7 +183,7 @@ public class ChatClientService extends Service implements IChatClient
 				}
 				case CONFIRMATION:
 				{
-					if(packet.id == mLastOutputMsgNumber)
+					if (packet.id == mLastOutputMsgNumber)
 					{
 						if (mWaitingConfirmation == true)
 						{
@@ -245,13 +194,13 @@ public class ChatClientService extends Service implements IChatClient
 						{
 							Toast.makeText(getBaseContext(), "Предупреждение: пришло не ожидаемое подтверждение!",
 									Toast.LENGTH_LONG).show();
-						}					
+						}
 					}
 					else
 					{
 						Toast.makeText(getBaseContext(), "Предупреждение: пришло устаревшее подтверждение!",
 								Toast.LENGTH_LONG).show();
-					}					
+					}
 					break;
 				}
 				default:
@@ -260,23 +209,18 @@ public class ChatClientService extends Service implements IChatClient
 			}
 			// Конец бесконечного цикла прослушки
 
-			this.cancel();			
-		}
+			// TODO: ...нужно ли здесь явно останавливать Thread?
+			this.cancel();
+		};
 
 		/* Call this from the main activity to shutdown the connection */
+		@Override
 		public void cancel()
 		{
-			try
-			{
-				tSocket.close();
-				transferToast("Соединение с сервером потеряно. Socket закрыт успешно.");
-			}
-			catch (IOException e)
-			{
-				transferToast("Закрытие Thread'а:  ошибка закрытия Socket'а сервера: " + e.getMessage());
-			}
+			super.cancel();
+			
 			transferResponseToUIThread(null, MessageCode.QUIT);
-		}
+		};
 	}
 
 	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */
@@ -313,6 +257,9 @@ public class ChatClientService extends Service implements IChatClient
 
 		if (selectedMessenger != null)
 		{
+			// Socket связи с mMasterDevice (сервером).
+			BluetoothSocket serverSocket;
+
 			mMessenger = selectedMessenger;
 
 			try
@@ -335,8 +282,8 @@ public class ChatClientService extends Service implements IChatClient
 				 * "SDP-сервис не найден!", Toast.LENGTH_LONG).show(); return
 				 * false; }
 				 */
-				mServerSocket = mMasterDevice.createRfcommSocketToServiceRecord(myid);
-				mServerSocket.connect();
+				serverSocket = mMasterDevice.createRfcommSocketToServiceRecord(myid);
+				serverSocket.connect();
 			}
 			catch (IOException e)
 			{
@@ -348,7 +295,7 @@ public class ChatClientService extends Service implements IChatClient
 				return false;
 			}
 
-			mConnectedThread = new ConnectedThread(mServerSocket);
+			mConnectedThread = new SyntheticThread(serverSocket);
 			mConnectedThread.setDaemon(true);
 			mConnectedThread.start();
 
@@ -356,7 +303,7 @@ public class ChatClientService extends Service implements IChatClient
 		}
 		else
 		{
-			Toast.makeText(getBaseContext(), "Ошибка ChatClientService: provider == null", Toast.LENGTH_LONG).show();
+			Toast.makeText(getBaseContext(), "Ошибка: selectedMessenger == null", Toast.LENGTH_LONG).show();
 			return false;
 		}
 	}
@@ -369,7 +316,7 @@ public class ChatClientService extends Service implements IChatClient
 	}
 
 	@Override
-	public void close()
+	public void closeChatClient()
 	{
 		disconnect();
 	}

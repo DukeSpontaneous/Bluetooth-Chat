@@ -63,7 +63,7 @@ public class MainActivity extends Activity
 			mChatClientService = null;
 		}
 	};
-	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -135,7 +135,7 @@ public class MainActivity extends Activity
 		// Bind to LocalService
 		Intent intentC = new Intent(getApplicationContext(), ChatClientService.class);
 		bindService(intentC, mClientConnection, Context.BIND_AUTO_CREATE);
-	}
+	};
 
 	@Override
 	protected void onStop()
@@ -157,7 +157,7 @@ public class MainActivity extends Activity
 		}
 
 		super.onStop();
-	}
+	};
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data)
@@ -194,7 +194,7 @@ public class MainActivity extends Activity
 			break;
 		}
 		}
-	}
+	};
 
 	/**
 	 * Метод, инициализирующий поиск Bluetooth-устройств посредством системного
@@ -264,7 +264,7 @@ public class MainActivity extends Activity
 			unregisterReceiver(mDiscoveryFinishedReceiver);
 			unregisterReceiver(mDiscoverDevicesReceiver);
 		}
-	}
+	};
 
 	/**
 	 * Метод, принимающий устройство-сервер BluetoothDevice device, или null,
@@ -284,5 +284,5 @@ public class MainActivity extends Activity
 			mChatClientService.setMasterDevice(device);
 
 		startActivity(chatActivityIntent);
-	}
+	};
 }

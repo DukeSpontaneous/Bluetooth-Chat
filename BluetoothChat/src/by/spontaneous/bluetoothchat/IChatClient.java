@@ -19,5 +19,5 @@ public interface IChatClient
 	public void sendResponse(String msg);
 
 	/** Интерфейс реализации завершения работы ChatActivity. */
-	public void close();
+	public void closeChatClient();
 }

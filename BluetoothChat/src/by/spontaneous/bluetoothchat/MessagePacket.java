@@ -16,6 +16,7 @@ public class MessagePacket
 	public final MessageCode code;
 	public final String message;
 
+	/** Конструктор пакета сообщения из массива байтов на фазе прибытия. */
 	public MessagePacket(byte[] inBytes)
 	{
 		bytes = inBytes;
@@ -40,6 +41,10 @@ public class MessagePacket
 		}
 	}
 
+	/**
+	 * Конструктор пакета сообщения из сокращённого набора составных компонентов
+	 * (без блока строковых данных) на фазе исхода . НЕ ТЕСТИРОВАЛСЯ.
+	 */
 	public MessagePacket(MessageCode inCode, int inId)
 	{
 		code = inCode;
@@ -64,7 +69,11 @@ public class MessagePacket
 		System.arraycopy(bHash, 0, bytes, 0, bHash.length);
 		System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
 	}
-	
+
+	/**
+	 * Конструктор пакета сообщения из полного набора составных компонентов на
+	 * фазе исхода.
+	 */
 	public MessagePacket(MessageCode inCode, int inId, String inMessage)
 	{
 		code = inCode;
@@ -91,7 +100,11 @@ public class MessagePacket
 		System.arraycopy(bHash, 0, bytes, 0, bHash.length);
 		System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
 	}
-	
+
+	/**
+	 * Проверка соответствия значения поля Hash code фактическому Hash code
+	 * сообщения, с целью убедить в том, что входящий пакет не был повреждён.
+	 */
 	public boolean checkHash()
 	{
 		if (bytes.length > 8)

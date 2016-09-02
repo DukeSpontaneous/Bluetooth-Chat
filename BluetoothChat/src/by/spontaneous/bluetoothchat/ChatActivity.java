@@ -219,14 +219,14 @@ public class ChatActivity extends Activity
 		//mProgressDialog = new ProgressDialog(this);
 		//mProgressDialog.setTitle("Отправка сообщения");
 		//mProgressDialog.setMessage("Ожидание подтверждения...");
-	}
+	};
 
 	@Override
 	protected void onDestroy()
 	{
 		// TODO Auto-generated method stub
 		super.onDestroy();
-	}
+	};
 
 	@Override
 	protected void onStart()
@@ -262,15 +262,14 @@ public class ChatActivity extends Activity
 					.show();
 			break;
 		}
-
-	}
+	};
 
 	@Override
 	protected void onStop()
 	{
 		if (isFinishing())
 		{
-			mChatClient.close();
+			mChatClient.closeChatClient();
 		}
 
 		if (mChatServerService != null)
@@ -288,7 +287,7 @@ public class ChatActivity extends Activity
 		mChatClient = null;
 
 		super.onStop();
-	}
+	};
 
 	/**
 	 * Обработчик кодов, возвращённых после обработки запроса
@@ -341,5 +340,5 @@ public class ChatActivity extends Activity
 	private void quitChatActivity()
 	{
 		this.finish();
-	}
+	};
 }
