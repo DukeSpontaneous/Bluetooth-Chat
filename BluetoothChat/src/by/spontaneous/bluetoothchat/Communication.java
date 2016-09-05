@@ -43,4 +43,7 @@ abstract class Communication extends Thread
 		{
 		}
 	}
+	
+	
+	
 }

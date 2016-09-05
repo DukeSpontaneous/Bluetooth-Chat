@@ -1,21 +1,20 @@
 package by.spontaneous.bluetoothchat;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.TimerTask;
 import java.util.UUID;
 
-import android.app.Service;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
-import android.os.Message;
 import android.os.Messenger;
-import android.os.RemoteException;
 import android.widget.Toast;
 
-public class ChatClientService extends Service implements IChatClient
+public class ChatClientService extends ChatService
 {
 	public class LocalBinder extends Binder
 	{
@@ -31,20 +30,10 @@ public class ChatClientService extends Service implements IChatClient
 	public IBinder onBind(Intent intent)
 	{
 		return mBinder;
-	}
-
-	/** Messenger взаимодействия с GUI. */
-	private Messenger mMessenger;
+	}	
 
 	/** Thread клиентского ожидания новых сообщений от сервера. */
-	private SyntheticThread mConnectedThread;
-
-	/** ID последнего исходящего сообщения. */
-	private volatile int mLastOutputMsgNumber = 0;
-	/** Содержание последнего исходящего сообщения. */
-	private volatile String mConfirmationMessage;
-	/** Список клиентов, не подтвердивших доставку последнего сообщения. */
-	private volatile boolean mWaitingConfirmation = false;
+	private Communication mConnectedThread;
 
 	/** Внешний целевой BluetoothDevice-сервер (null для самого сервера). */
 	private BluetoothDevice mMasterDevice;
@@ -73,7 +62,7 @@ public class ChatClientService extends Service implements IChatClient
 			mConnectedThread.cancel();
 			mConnectedThread = null;
 
-			mMessenger = null;
+			aMessenger = null;
 		}
 	}
 
@@ -82,29 +71,44 @@ public class ChatClientService extends Service implements IChatClient
 		mMasterDevice = mDevice;
 	}
 
-	/**
-	 * Пока этот метод создан просто для параллельности с ChatSercverService,
-	 * где broadcast используется множественно.
-	 */
-	private void unicasting(MessagePacket packet)
+	private void broadcasting(Communication sender, MessagePacket packet)
 	{
-		// Отправленное сообщение
-		mConfirmationMessage = packet.message;
-
-		try
+		synchronized (aConnectionThread)
 		{
-			synchronized (mConnectedThread)
+			for (Communication thread : aConnectionThread)
 			{
-				mConnectedThread.tOutStream.write(packet.bytes);
+				if (thread != sender)
+				{
+					try
+					{
+						thread.tOutStream.write(packet.bytes);
+						synchronized (aConfirmationHashMap)
+						{
+							ArrayList<MessagePacket> wList = aConfirmationHashMap.get(thread);
+							wList.add(packet);
+						}
+						transferResponseToUIThread(null, MessageCode.WAITING);
+						
+						/*
+						aConfirmationTimer.schedule(new TimerTask()
+						{
+							public void run()
+							{
+								// TODO: обработка истечения времени ожидания подтверждения доставки.
+							}
+						}, 1000);
+						*/
+					}
+					catch (IOException e)
+					{
+						Toast.makeText(getBaseContext(), "Stream.write IOException:" + e.getMessage(),
+								Toast.LENGTH_LONG).show();
+
+						// TODO: Это признак потери связи с клиентом...
+						// ...закрыть и удалить пару поток-соккет...
+					}
+				}
 			}
-			mWaitingConfirmation = true;
-			transferResponseToUIThread(null, MessageCode.WAITING);
-		}
-		catch (IOException e)
-		{
-			// Это признак потери связи с сервером.
-			Toast.makeText(getBaseContext(), "Stream.write IOException:" + e.getMessage(), Toast.LENGTH_LONG).show();
-			transferResponseToUIThread(null, MessageCode.QUIT);
 		}
 	}
 
@@ -132,7 +136,7 @@ public class ChatClientService extends Service implements IChatClient
 				}
 				catch (IOException e)
 				{
-					transferToast("Ошибка прослушки сервера:" + e.getMessage());
+					transferToast("Ошибка прослушки клиента:" + e.getMessage());
 					break;
 				}
 
@@ -152,7 +156,7 @@ public class ChatClientService extends Service implements IChatClient
 				case MESSAGE:
 				{
 					// Сразу нужно отправить подтверждение в любом случае
-					synchronized (mConnectedThread)
+					synchronized (aConnectionThread)
 					{
 						try
 						{
@@ -172,35 +176,20 @@ public class ChatClientService extends Service implements IChatClient
 
 					if (packet.id <= tLastInputMsgNumber)
 					{
-						transferToast("Ошибка Клиента: ID последнего принятого сообщения >= анализируемому!");
+						transferToast("Ошибка Сервера: ID последнего принятого сообщения >= анализируемому!");
 						continue;
 					}
 
 					transferResponseToUIThread(packet.message, packet.code);
 
+					// Отправить всем клиентам, кроме отправителя
+					broadcasting(this, packet);
 					tLastInputMsgNumber = packet.id;
 					break;
 				}
 				case CONFIRMATION:
 				{
-					if (packet.id == mLastOutputMsgNumber)
-					{
-						if (mWaitingConfirmation == true)
-						{
-							mWaitingConfirmation = false;
-							transferResponseToUIThread(null, MessageCode.CONFIRMATION);
-						}
-						else
-						{
-							Toast.makeText(getBaseContext(), "Предупреждение: пришло не ожидаемое подтверждение!",
-									Toast.LENGTH_LONG).show();
-						}
-					}
-					else
-					{
-						Toast.makeText(getBaseContext(), "Предупреждение: пришло устаревшее подтверждение!",
-								Toast.LENGTH_LONG).show();
-					}
+					syncCheckIncomingConfirmation(packet);
 					break;
 				}
 				default:
@@ -212,37 +201,115 @@ public class ChatClientService extends Service implements IChatClient
 			// TODO: ...нужно ли здесь явно останавливать Thread?
 			this.cancel();
 		};
+		
+		private void syncCheckIncomingConfirmation(MessagePacket packet)
+		{
+			synchronized (aConfirmationHashMap)
+			{
+				if (aConfirmationHashMap.containsKey(this))
+				{
+					boolean continueWaiting = false;
+					boolean packetFound = false;
+					for (MessagePacket mp : aConfirmationHashMap.get(this))
+					{
+						if (packet.id == mp.id)
+						{
+							aConfirmationHashMap.get(this).remove(mp);
+							packetFound = true;
+						}
+						else
+						{
+							continueWaiting = true;
+						}
+					}
 
-		/* Call this from the main activity to shutdown the connection */
+					if (!continueWaiting)
+					{
+						transferResponseToUIThread(null, MessageCode.CONFIRMATION);
+					}
+					
+					if (!packetFound)
+					{
+						transferToast("Ошибка: ложный идентификатор подтверждения доставки!");
+					}
+				}
+				else
+				{
+					transferToast("Ошибка: неожиданное соединение ложно подтвердило доставку!");
+				}
+			}
+		};
+
 		@Override
 		public void cancel()
 		{
+			// Прослушка остановлена: удалить это подключение из списков
+			syncRemoveConnectedClient(this);
+			
 			super.cancel();
 			
 			transferResponseToUIThread(null, MessageCode.QUIT);
 		};
 	}
 
-	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */
-	private synchronized void transferResponseToUIThread(String str, MessageCode code)
+	/** Метод синхронизированного добавления клиентов в списки сервера. */
+	private void syncAddConnectedClient(BluetoothSocket socket)
 	{
-		try
+		// TODO: возможно стоит подписывать потоки методом setName()
+		final SyntheticThread thread = new SyntheticThread(socket);
+
+		synchronized (aConnectionThread)
 		{
-			Message msg = Message.obtain(null, code.getId(), 0, 0);
-			msg.obj = str;
-			mMessenger.send(msg);
+			aConnectionThread.add(thread);
 		}
-		catch (RemoteException e)
+
+		synchronized (aConfirmationHashMap)
 		{
+			aConfirmationHashMap.put(thread, new ArrayList<MessagePacket>());
 		}
+
+		thread.setDaemon(true);
+		thread.start();
 	}
 
-	/** Формирование запроса на вывод Toast в Thread'е UI. */
-	private void transferToast(String str)
+	// TODO: Вообще на данный момент Thread'ы занимаются самоликвидацией и
+	// даже очищают от себя список Thread'ов и список ожидания o_0.
+	// Вообще я сейчас задумался о том, чтобы перевести их на полное
+	// самообслуживание через статические члены Communication...
+	/** Метод синхронизированного удаления клиентов из списков сервера. */
+	private void syncRemoveConnectedClient(SyntheticThread targetThread)
 	{
-		transferResponseToUIThread(str, MessageCode.TOAST);
-	}
+		synchronized (aConnectionThread)
+		{
+			aConnectionThread.remove(targetThread);
+		}
 
+		synchronized (aConfirmationHashMap)
+		{
+			if (aConfirmationHashMap.containsKey(targetThread))
+			{
+				aConfirmationHashMap.remove(targetThread);
+
+				boolean confirmationEmpty = true;
+				for (ArrayList<MessagePacket> waitedPacketsConfirm : aConfirmationHashMap.values())
+				{
+					// Если есть другие ожидаемые подтверждения доставки
+					if (!waitedPacketsConfirm.isEmpty())
+					{
+						confirmationEmpty = false;
+						break;
+					}
+				}
+
+				if (confirmationEmpty == true)
+				{
+					// Если нет ожидаемых подтверждений доставки
+					transferResponseToUIThread(null, MessageCode.CONFIRMATION);
+				}
+			}
+		}
+	}
+	
 	// Client-реализация IChatClient для ChatActivity
 	/**
 	 * Client-реализация одного из методов интерфейса IChatClient, отвечающего
@@ -260,7 +327,7 @@ public class ChatClientService extends Service implements IChatClient
 			// Socket связи с mMasterDevice (сервером).
 			BluetoothSocket serverSocket;
 
-			mMessenger = selectedMessenger;
+			aMessenger = selectedMessenger;
 
 			try
 			{
@@ -295,10 +362,7 @@ public class ChatClientService extends Service implements IChatClient
 				return false;
 			}
 
-			mConnectedThread = new SyntheticThread(serverSocket);
-			mConnectedThread.setDaemon(true);
-			mConnectedThread.start();
-
+			syncAddConnectedClient(serverSocket);
 			return true;
 		}
 		else
@@ -312,7 +376,7 @@ public class ChatClientService extends Service implements IChatClient
 	public void sendResponse(String msg)
 	{
 		// Формирование сообщения согласно выбранному протоколу
-		unicasting(new MessagePacket(MessageCode.MESSAGE, ++mLastOutputMsgNumber, msg));
+		broadcasting(null, new MessagePacket(MessageCode.MESSAGE, ++aLastOutputMsgNumber, msg));
 	}
 
 	@Override

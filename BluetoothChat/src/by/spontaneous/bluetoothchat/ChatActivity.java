@@ -222,13 +222,6 @@ public class ChatActivity extends Activity
 	};
 
 	@Override
-	protected void onDestroy()
-	{
-		// TODO Auto-generated method stub
-		super.onDestroy();
-	};
-
-	@Override
 	protected void onStart()
 	{
 		super.onStart();
