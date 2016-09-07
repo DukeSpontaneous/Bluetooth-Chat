@@ -23,8 +23,9 @@ import android.widget.ListView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import by.spontaneous.bluetoothchat.Services.ChatClientService;
 
-public class MainActivity extends Activity
+public final class MainActivity extends Activity
 {
 	/** Вариант допустимого кода для включения Bluetooth устройства. */
 	private static final int REQUEST_ENABLE_BT = 1;

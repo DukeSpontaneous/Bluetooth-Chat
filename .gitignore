@@ -41,4 +41,5 @@ captures/
 
 # Eclipse-Android IDE
 .metadata/.plugins/org.eclipse.core.resources/.history/
+.metadata/.plugins/org.eclipse.epp.logging.aeri.ide/
 .recommenders/

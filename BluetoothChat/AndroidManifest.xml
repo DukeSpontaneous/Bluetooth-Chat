@@ -29,13 +29,13 @@
         <activity android:name=".ChatActivity"></activity>
         
         <service
-            android:name=".ChatClientService"
+            android:name="by.spontaneous.bluetoothchat.Services.ChatClientService"
             android:enabled="true"
             android:exported="false" />
         <service
-            android:name=".ChatServerService"
+            android:name="by.spontaneous.bluetoothchat.Services.ChatServerService"
             android:enabled="true"
-            android:exported="false"></service>
+            android:exported="false" />
     </application>
 
 </manifest>

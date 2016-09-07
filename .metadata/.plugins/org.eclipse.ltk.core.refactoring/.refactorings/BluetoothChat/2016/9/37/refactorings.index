@@ -1,1 +1,15 @@
 1473098218965	Delete element
+1473143536858	Rename type 'SyntheticThread'
+1473144416273	Move compilation units
+1473144681280	Move compilation units
+1473144704272	Move compilation units
+1473145681652	Rename type 'Communication'
+1473161929062	Rename field 'aLastInputMsgNumber'
+1473161957402	Rename field 'aConfirmationHashMap'
+1473163854288	Rename type 'BluetoothSocketThread'
+1473165882637	Rename method 'getMyBluetoothMACAddress'
+1473166332693	Rename method 'getMyMACAddressBytes'
+1473225850276	Rename local variable 'mServerSocket'
+1473238415470	Rename method 'createServer'
+1473238423921	Rename method 'destroyServer'
+1473239189168	Rename enum constant '__MESSAGE'

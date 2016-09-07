@@ -22,8 +22,12 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+import by.spontaneous.bluetoothchat.Services.ChatClientService;
+import by.spontaneous.bluetoothchat.Services.ChatServerService;
+import by.spontaneous.bluetoothchat.Services.GUIRequestCode;
+import by.spontaneous.bluetoothchat.Services.IChatClient;
 
-public class ChatActivity extends Activity
+public final class ChatActivity extends Activity
 {
 	/** Вариант допустимого кода для включения Bluetooth устройства. */
 	private static final int REQUEST_DISCOVERABLE_BT = 2;
@@ -36,7 +40,7 @@ public class ChatActivity extends Activity
 	private ArrayAdapter<String> mMessagesAdapter;
 
 	/** Точка доступа к ChatClientService. */
-	private IChatClient mChatClient;
+	private IChatClient mChatClient = null;
 
 	/** Точка доступа к ChatServerService. */
 	private ChatServerService mChatServerService;
@@ -44,7 +48,7 @@ public class ChatActivity extends Activity
 	private ChatClientService mChatClientService;
 
 	private ApplicationMode mApplicationMode;
-	//private ProgressDialog mProgressDialog;
+	// private ProgressDialog mProgressDialog;
 
 	/** Messenger, позволяющий получить доступ к Thread'у ChatActivity. */
 	private Messenger mChatUIThreadMessenger = new Messenger(new Handler()
@@ -54,17 +58,17 @@ public class ChatActivity extends Activity
 		{
 			final ListView listView = (ListView) findViewById(R.id.listViewChat);
 			final Button buttonSend = (Button) findViewById(R.id.buttonSendMessage);
-			
+
 			String str;
-			switch (MessageCode.fromId((byte) msg.what))
+			switch (GUIRequestCode.fromId((byte) msg.what))
 			{
 			// Доступ к выводу Toast'ов для Thread'ов прослушивающих Socket'ы
-			case TOAST:
+			case _TOAST:
 				str = (String) msg.obj;
 				Toast.makeText(getBaseContext(), str, Toast.LENGTH_LONG).show();
 				break;
 			// Вывод сообщений в лог чата
-			case MESSAGE:
+			case _MESSAGE:
 				str = (String) msg.obj;
 				mMessages.add(str);
 				mMessagesAdapter.notifyDataSetChanged();
@@ -74,21 +78,21 @@ public class ChatActivity extends Activity
 				// сообщение сейчас вне зоны видимости)?
 				listView.smoothScrollToPosition(mMessagesAdapter.getCount() - 1);
 				break;
-			case WAITING:
-				//mProgressDialog.show();
+			case _BLOCK:
+				// mProgressDialog.show();
 				buttonSend.setText("Ожидание доставки...");
 				buttonSend.setEnabled(false);
 				break;
-			case CONFIRMATION:
-				//mProgressDialog.dismiss();
+			case _UNBLOCK:
+				// mProgressDialog.dismiss();
 				buttonSend.setText("Отправить");
 				buttonSend.setEnabled(true);
 				break;
-			case QUIT:
+			case _QUIT:
 				quitChatActivity();
 				break;
 			// Исключительная ситуация
-			case UNKNOWN:
+			case _UNKNOWN:
 				Toast.makeText(getBaseContext(), "Messenger: неопределённый тип сообщения!", Toast.LENGTH_LONG).show();
 				break;
 			default:
@@ -109,14 +113,6 @@ public class ChatActivity extends Activity
 			mChatClient = mChatServerService;
 
 			tryConnectToService();
-
-			// СhatServerService.createServer() нужен Messenger!!!
-			if (!mChatServerService.createServer(mBluetoothAdapter))
-			{
-				Toast.makeText(getBaseContext(), "Ошибка ChatServerService: не удалось создать сервер.",
-						Toast.LENGTH_LONG).show();
-				return;
-			}
 		}
 
 		@Override
@@ -157,7 +153,7 @@ public class ChatActivity extends Activity
 	{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.chat);
-		
+
 		if (mBluetoothAdapter == null)
 		{
 			this.finish();
@@ -201,7 +197,7 @@ public class ChatActivity extends Activity
 					// Отправка сообщения самому себе
 					try
 					{
-						final Message msg = Message.obtain(null, MessageCode.MESSAGE.getId(), 0, 0);
+						final Message msg = Message.obtain(null, GUIRequestCode._MESSAGE.getId(), 0, 0);
 						msg.obj = text.getText().toString();
 						mChatUIThreadMessenger.send(msg);
 					}
@@ -216,9 +212,9 @@ public class ChatActivity extends Activity
 			}
 		});
 
-		//mProgressDialog = new ProgressDialog(this);
-		//mProgressDialog.setTitle("Отправка сообщения");
-		//mProgressDialog.setMessage("Ожидание подтверждения...");
+		// mProgressDialog = new ProgressDialog(this);
+		// mProgressDialog.setTitle("Отправка сообщения");
+		// mProgressDialog.setMessage("Ожидание подтверждения...");
 	};
 
 	@Override
@@ -326,10 +322,10 @@ public class ChatActivity extends Activity
 	/** Попытка передать Messenger для Thread'ов выбранного Service. */
 	private void tryConnectToService()
 	{
-		if (mChatClient.connectToServer(mChatUIThreadMessenger) == false)
+		if (!mChatClient.connectToServer(mChatUIThreadMessenger))
 			quitChatActivity();
 	};
-	
+
 	private void quitChatActivity()
 	{
 		this.finish();

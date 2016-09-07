@@ -1,6 +1,6 @@
 package by.spontaneous.bluetoothchat;
 
-public enum ApplicationMode
+enum ApplicationMode
 {
 	UNKNOWN(0),
 	
@@ -14,12 +14,12 @@ public enum ApplicationMode
 		id = code;
 	}
 
-	public int getId()
+	public final int getId()
 	{
 		return id;
 	}
 
-	public static ApplicationMode fromId(int code)
+	public final static ApplicationMode fromId(int code)
 	{
 		ApplicationMode[] list = ApplicationMode.values();
 
