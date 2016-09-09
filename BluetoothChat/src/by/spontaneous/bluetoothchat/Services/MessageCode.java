@@ -7,8 +7,10 @@ enum MessageCode
 	__TEXT((byte)1),
 	__HELLO((byte)2),
 	__GOODBYE((byte)3),
-	__CONFIRMATION((byte)4),
-	__QUIT((byte)5);
+	__PING((byte)4),
+	__PONG((byte)5),
+	__CONFIRMATION((byte)6),
+	__QUIT((byte)7);
 
 	private final byte id;
 

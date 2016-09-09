@@ -29,6 +29,22 @@ final class MessagePacket
 		return macAddressBytes;
 	}
 
+	/** Возвращает byte[] представление адреса отправителя. */
+	private final static byte[] getSenderAddressBytes(String strAddress)
+	{
+		final String[] macAddressParts = strAddress.split(":");
+		final byte[] macAddressBytes = new byte[macAddressParts.length];
+
+		// Парсинг 16-ричного текстового представления
+		for (int i = 0; i < macAddressParts.length; ++i)
+		{
+			Integer hex = Integer.parseInt(macAddressParts[i], 16);
+			macAddressBytes[i] = hex.byteValue();
+		}
+
+		return macAddressBytes;
+	}
+
 	public final byte[] bytes;
 
 	public final int hash;
@@ -64,36 +80,10 @@ final class MessagePacket
 		}
 	}
 
-	/**
-	 * Конструктор пакета сообщения из сокращённого набора составных компонентов
-	 * (без блока строковых данных) на фазе исхода . НЕ ТЕСТИРОВАЛСЯ.
-	 */
-	public MessagePacket(MessageCode inCode, int inId)
+	/** Супер-конструктор, инициализирующий произвольный набор параметров. */
+	private MessagePacket(byte[] inAddress, MessageCode inCode, int inId, String inMessage)
 	{
-		address = MY_BT_MAC_ADDRESS;
-		id = inId;
-		code = inCode;
-		message = null;
-
-		byte[] bBuf = getBodyBytes();
-
-		hash = Arrays.hashCode(bBuf);
-
-		final byte[] bHash = ByteBuffer.allocate(4).putInt(hash).array();
-
-		bytes = new byte[bHash.length + bBuf.length];
-
-		System.arraycopy(bHash, 0, bytes, 0, bHash.length);
-		System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
-	}
-
-	/**
-	 * Конструктор пакета сообщения из полного набора составных компонентов на
-	 * фазе исхода.
-	 */
-	public MessagePacket(MessageCode inCode, int inId, String inMessage)
-	{
-		address = MY_BT_MAC_ADDRESS;
+		address = inAddress;
 		id = inId;
 		code = inCode;
 		message = inMessage;
@@ -110,27 +100,28 @@ final class MessagePacket
 		System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
 	}
 
-	/**
-	 * Конструктор Hello-пакета, предназначенного для знакомства клиентов друг с
-	 * другом, и распространения индекса последнего принятного сообщения.
-	 */
+	/** Экспресс-конструктор пакета-запроса. */
+	public MessagePacket(MessageCode inCode)
+	{
+		this(MY_BT_MAC_ADDRESS, inCode, 0, null);
+	}
+	
+	/** Экспресс-конструктор нумерованного пакета-запроса. */
+	public MessagePacket(MessageCode inCode, int inId)
+	{
+		this(MY_BT_MAC_ADDRESS, inCode, inId, null);
+	}
+	
+	/** Экспресс-конструктор пакета-сообщения. */
+	public MessagePacket(MessageCode inCode, int inId, String inMessage)
+	{
+		this(MY_BT_MAC_ADDRESS, inCode, inId, inMessage);
+	}	
+
+	/** Экспресс-конструктор суррогатных HELLO-пакетов сервера. */
 	public MessagePacket(String inAddress, int inId)
 	{
-		address = getSenderAddressBytes(inAddress);
-		id = inId;
-		code = MessageCode.__HELLO;
-		message = null;
-
-		byte[] bBuf = getBodyBytes();
-
-		hash = Arrays.hashCode(bBuf);
-
-		final byte[] bHash = ByteBuffer.allocate(4).putInt(hash).array();
-
-		bytes = new byte[bHash.length + bBuf.length];
-
-		System.arraycopy(bHash, 0, bytes, 0, bHash.length);
-		System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
+		this(getSenderAddressBytes(inAddress), MessageCode.__HELLO, inId, null);
 	}
 
 	/**
@@ -168,22 +159,6 @@ final class MessagePacket
 		return bBuf;
 	}
 
-	/** Возвращает byte[] представление адреса отправителя. */
-	private final byte[] getSenderAddressBytes(String strAddress)
-	{
-		final String[] macAddressParts = strAddress.split(":");
-		final byte[] macAddressBytes = new byte[macAddressParts.length];
-
-		// Парсинг 16-ричного текстового представления
-		for (int i = 0; i < macAddressParts.length; ++i)
-		{
-			Integer hex = Integer.parseInt(macAddressParts[i], 16);
-			macAddressBytes[i] = hex.byteValue();
-		}
-
-		return macAddressBytes;
-	}
-
 	/** Возвращает String представление адреса отправителя. */
 	public final String getSenderAddressString()
 	{
@@ -193,7 +168,7 @@ final class MessagePacket
 		{
 			for (int i = 0;;)
 			{
-				// "& 0xFF" нужно для приведения к беззнаковому виду 
+				// "& 0xFF" нужно для приведения к беззнаковому виду
 				hex += digits.charAt((address[i] & 0xFF) / 16);
 				hex += digits.charAt((address[i] & 0xFF) % 16);
 				if (++i < address.length)

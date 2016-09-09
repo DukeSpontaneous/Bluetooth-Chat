@@ -15,71 +15,34 @@ abstract class SocketThread extends Thread
 	private final OutputStream tOutStream;
 
 	/** Конструктор Thread, инкапсулирующий BluetoothSocket. */
-	public SocketThread(BluetoothSocket socket)
+	public SocketThread(BluetoothSocket socket) throws IOException
 	{
 		tSocket = socket;
 
-		InputStream tmpIn = null;
-		OutputStream tmpOut = null;
-		try
-		{
-			tmpIn = socket.getInputStream();
-			tmpOut = socket.getOutputStream();
-		}
-		catch (IOException e)
-		{
-			this.cancel();
-		}
-		tInStream = tmpIn;
-		tOutStream = tmpOut;
+		tInStream = socket.getInputStream();
+		tOutStream = socket.getOutputStream();
 	}
 
 	/** Обработчик остановки Thread, закрывающий свой BluetoothSocket. */
-	protected void cancel()
+	protected void cancel() throws IOException
 	{
-		try
-		{
-			tSocket.close();
-		}
-		catch (IOException e)
-		{
-		}
+		tSocket.close();
 	}
 	
-	public void syncWrite(byte[] bytes)
+	public void syncWrite(byte[] bytes) throws IOException
 	{
 		synchronized (tInStream)
 		{
-			try
-			{
-				tOutStream.write(bytes);
-			}
-			catch (IOException e)
-			{
-				this.cancel();
-				
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			tOutStream.write(bytes);
 		}		
 	}
 	
-	public void syncWriteSeries(ArrayList<byte[]> bytesList)
+	public void syncWriteSeries(ArrayList<byte[]> bytesList) throws IOException
 	{
 		synchronized (tInStream)
 		{
-			try
-			{
-				for(byte[] bytes : bytesList)
-					tOutStream.write(bytes);
-			}
-			catch (IOException e)
-			{
-				this.cancel();
-				
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			for(byte[] bytes : bytesList)
+				tOutStream.write(bytes);
 		}		
 	}
 }

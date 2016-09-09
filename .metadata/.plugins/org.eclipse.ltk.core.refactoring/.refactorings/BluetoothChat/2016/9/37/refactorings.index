@@ -13,3 +13,7 @@
 1473238415470	Rename method 'createServer'
 1473238423921	Rename method 'destroyServer'
 1473239189168	Rename enum constant '__MESSAGE'
+1473316232878	Delete element
+1473403975913	Rename local variable 'inAddress'
+1473404018531	Rename local variable 'bAddress'
+1473420232756	Change method 'transferResponseToUIThread'

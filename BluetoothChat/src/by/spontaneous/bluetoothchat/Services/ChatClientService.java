@@ -39,7 +39,7 @@ public final class ChatClientService extends ChatService
 
 	@Override
 	public void onDestroy()
-	{
+	{		
 		super.onDestroy();
 		Toast.makeText(getBaseContext(), "ChatClientService onDestroy()", Toast.LENGTH_LONG).show();
 	}
@@ -99,9 +99,9 @@ public final class ChatClientService extends ChatService
 	}
 
 	@Override
-	public void closeChatClient()
+	public final void closeChatClient()
 	{
 		mMasterDevice = null;
-		aMessenger = null;
+		super.closeChatClient();
 	}
 }

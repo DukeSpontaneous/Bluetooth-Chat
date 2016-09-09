@@ -61,29 +61,29 @@ public final class ChatServerService extends ChatService
 
 		public void run()
 		{
-			BluetoothSocket clientSocket;
 			while (true)
 			{
-				clientSocket = null;
+				transferToast("Ожидание нового клиента...");
 				try
-				{
-					transferToast("Ожидание нового клиента...");
-					clientSocket = tServerSocket.accept();
-					transferToast("Подключен новый клиент!");
+				{					
+					final BluetoothSocket clientSocket = tServerSocket.accept();
+					syncAddConnectedClient(clientSocket);					
 				}
 				catch (IOException e)
 				{
-					// TODO: ...но его генерирует и закрытие Activity... o_0
-
-					transferToast("Ошибка ожидания нового клиента: " + e.getMessage());
-					transferResponseToUIThread(null, GUIRequestCode._QUIT);
-					return;
+					// Основной выход из цикла ожидания
+					if(e.getMessage() == "[JSR82] accept: Connection is not created (failed or aborted).")
+						return;
+					
+					// Непредвиденный выход из цикла ожидания...
+					transferToast(e.getMessage());
+					break;
 				}
-				if (clientSocket != null)
-				{
-					syncAddConnectedClient(clientSocket);
-				}
+				transferToast("Подключен новый клиент!");
 			}
+			transferToast("Ошибка: ожидание новых клиентов аварийно прекращено!");
+			transferResponseToUIThread(GUIRequestCode._QUIT, null);
+			this.cancel();
 		}
 
 		/** Will cancel the listening socket, and cause the thread to finish */
@@ -92,21 +92,12 @@ public final class ChatServerService extends ChatService
 			try
 			{
 				tServerSocket.close();
-
-				for (SocketThread thread : aConnectionThread)
-				{
-					thread.cancel();
-				}
-
-				// TODO: скорее всего излишняя операция для перестраховки
-				aConnectionThread.clear();
-				aConfirmationMap.clear();
 			}
 			catch (IOException e)
 			{
 				transferToast("Ошибка ServerSocket.cancel(): " + e.getMessage());
 			}
-			transferResponseToUIThread(null, GUIRequestCode._QUIT);
+			transferResponseToUIThread(GUIRequestCode._QUIT, null);
 		}
 	}
 
@@ -128,7 +119,7 @@ public final class ChatServerService extends ChatService
 		{
 			Toast.makeText(getBaseContext(), "Ошибка создания AcceptThread: " + e.getMessage(), Toast.LENGTH_LONG)
 					.show();
-			transferResponseToUIThread(null, GUIRequestCode._QUIT);
+			transferResponseToUIThread(GUIRequestCode._QUIT, null);
 			return false;
 		}
 
@@ -187,9 +178,9 @@ public final class ChatServerService extends ChatService
 	}
 
 	@Override
-	public void closeChatClient()
-	{
+	public final void closeChatClient()
+	{		
 		destroyAcceptThread();
-		aMessenger = null;
+		super.closeChatClient();
 	}
 }

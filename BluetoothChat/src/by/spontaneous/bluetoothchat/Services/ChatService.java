@@ -13,15 +13,12 @@ import android.bluetooth.BluetoothSocket;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.widget.Toast;
 
 abstract class ChatService extends Service implements IChatClient
 {
-	//protected final static String SERVICE_UUID = "565b2b42-b215-4717-a10b-f61bd445001f";
-	//protected final static String SERVICE_NAME = "Testing Server";
-	
-	
 	/** Список Thread'ов поднятых подключений. */
-	protected final ArrayList<SocketThread> aConnectionThread = new ArrayList<SocketThread>();
+	protected final ArrayList<ConnectionThread> aConnectionThread = new ArrayList<ConnectionThread>();
 
 	/** ID последнего исходящего сообщения. */
 	protected volatile int aLastOutputMsgNumber = 0;
@@ -35,6 +32,8 @@ abstract class ChatService extends Service implements IChatClient
 	protected final HashMap<Thread, ArrayList<MessagePacket>> aConfirmationMap = new HashMap<Thread, ArrayList<MessagePacket>>();
 	protected final HashMap<String, Integer> aLastInputMsgNumberMap = new HashMap<String, Integer>();
 
+	// This class is thread-safe: multiple threads can share a single Timer
+	// object without the need for external synchronization.
 	private final Timer aConfirmationTimer = new Timer();
 
 	// Блок взаимодействия с Thread'ами подключений.
@@ -42,11 +41,11 @@ abstract class ChatService extends Service implements IChatClient
 	 * Метод отправки сообщения сервером, рассылающий его всем клиентам, кроме
 	 * отправителя.
 	 */
-	protected final void broadcasting(Thread sender, MessagePacket packet)
+	protected final void broadcasting(final Thread sender, final MessagePacket packet)
 	{
 		synchronized (aConnectionThread)
 		{
-			for (SocketThread thread : aConnectionThread)
+			for (final ConnectionThread thread : aConnectionThread)
 			{
 				if (thread != sender)
 				{
@@ -54,28 +53,66 @@ abstract class ChatService extends Service implements IChatClient
 					{
 						aConfirmationMap.get(thread).add(packet);
 					}
-					transferResponseToUIThread(null, GUIRequestCode._BLOCK);
+					transferResponseToUIThread(GUIRequestCode._BLOCK, null);
 
-					/*
 					// Добавление заданий проверки доставки
 					aConfirmationTimer.schedule(new TimerTask()
-					{						
+					{
+						private int retrys = 5;
+
+						@Override
 						public void run()
 						{
-							// TODO: обработка истечения времени ожидания
+							// Обработка истечения времени ожидания
 							// подтверждения доставки.
+							boolean isNotConfirmed;
 							synchronized (aConfirmationMap)
 							{
-								// Нет доступа к локальным переменным!
-								if(aConfirmationMap.get(thread).contains(packet))
-								{									
-								}								
+								isNotConfirmed = aConfirmationMap.get(thread).contains(packet);
+							}
+
+							if (isNotConfirmed == true)
+							{
+								if (retrys > 0)
+								{
+									transferToast("Переотправка... =[");
+									try
+									{
+										thread.syncWrite(packet.bytes);
+									}
+									catch (IOException e)
+									{
+										transferToast("Ошибка переотправки: " + e.getMessage());
+									}
+									--retrys;
+								}
+								else
+								{
+									// Число попыток повторной отправки
+									// превышает
+									// устоновленный лимит
+									transferToast("Превышено число попыток переотправки!");
+									thread.cancel();
+
+									this.cancel();
+								}
+							}
+							else
+							{
+								this.cancel();
 							}
 						}
-					}, 1000);
-					*/
 
-					thread.syncWrite(packet.bytes);
+					}, 2000, 2000);
+
+					try
+					{
+						thread.syncWrite(packet.bytes);
+					}
+					catch (IOException e)
+					{
+						transferToast("Ошибка итерации broadcasting(): " + e.getMessage());
+					}
 				}
 			}
 		}
@@ -84,15 +121,15 @@ abstract class ChatService extends Service implements IChatClient
 	/** Класс потоков сервера, принимающих сообщения подключенных клиентов. */
 	private final class ConnectionThread extends SocketThread
 	{
-		public ConnectionThread(BluetoothSocket socket)
+		public ConnectionThread(BluetoothSocket socket) throws IOException
 		{
 			super(socket);
 
 			final ArrayList<byte[]> bPackets = new ArrayList<byte[]>();
-			// Знакомство нового клиента с сервером
-			bPackets.add(new MessagePacket(MessageCode.__HELLO, aLastOutputMsgNumber, null).bytes);
+			// Формирование своего HELLO-пакета
+			bPackets.add(new MessagePacket(MessageCode.__HELLO, aLastOutputMsgNumber).bytes);
 
-			// Знакомство нового клиента с клиентами, подключившимися ранее
+			// Формирование суррогатных HELLO-пакетов
 			synchronized (aLastInputMsgNumberMap)
 			{
 				Collection<String> keys = aLastInputMsgNumberMap.keySet();
@@ -139,7 +176,15 @@ abstract class ChatService extends Service implements IChatClient
 				case __TEXT:
 				{
 					// Сразу нужно отправить подтверждение в любом случае
-					syncWrite(new MessagePacket(MessageCode.__CONFIRMATION, packet.id, null).bytes);
+					try
+					{
+						syncWrite(new MessagePacket(MessageCode.__CONFIRMATION, packet.id).bytes);
+					}
+					catch (IOException e)
+					{
+						transferToast("Ошибка отправки подтверждения: " + e.getMessage());
+						break;
+					}
 
 					// TODO: вообще теоретически последовательность должна
 					// быть непрерывна, за исключением случая, когда клиент
@@ -156,7 +201,7 @@ abstract class ChatService extends Service implements IChatClient
 					{
 						transferToast("Предупреждение: пропуск в последовательности сообщений!");
 					}
-					transferResponseToUIThread(packet.message, GUIRequestCode._MESSAGE);
+					transferResponseToUIThread(GUIRequestCode._MESSAGE, packet.message);
 
 					// Отправить всем подключениям, кроме отправителя
 					broadcasting(this, packet);
@@ -174,13 +219,31 @@ abstract class ChatService extends Service implements IChatClient
 					broadcasting(this, packet);
 					break;
 				}
+				case __PING:
+				{
+					try
+					{
+						syncWrite(new MessagePacket(MessageCode.__PONG).bytes);
+					}
+					catch (IOException e)
+					{
+						transferToast("Ошибка отправки PONG: " + e.getMessage());
+						break;
+					}
+				}
+				case __PONG:
+				{
+					
+				}
 				case __GOODBYE:
 				{
 					syncGoodbye(packet);
 					broadcasting(this, packet);
+					transferToast("Клиент __GOODBYE!");
 					break;
 				}
 				default:
+					transferToast("Ошибка: неопределённый тип сообщения!");
 					break;
 				}
 			}
@@ -213,7 +276,7 @@ abstract class ChatService extends Service implements IChatClient
 
 					if (!continueWaiting)
 					{
-						transferResponseToUIThread(null, GUIRequestCode._UNBLOCK);
+						transferResponseToUIThread(GUIRequestCode._UNBLOCK, null);
 					}
 
 					if (!packetFound)
@@ -249,23 +312,32 @@ abstract class ChatService extends Service implements IChatClient
 			}
 		}
 
+		/** Расширение функции, учитывающее реализацию протокола обмена. */
 		@Override
 		protected void cancel()
 		{
 			// Прослушка остановлена: удалить это подключение из списков
-			broadcasting(this, new MessagePacket(MessageCode.__GOODBYE, ++aLastOutputMsgNumber, null));
+			broadcasting(this, new MessagePacket(MessageCode.__GOODBYE, ++aLastOutputMsgNumber));
 			syncRemoveConnectedClient(this);
 
-			super.cancel();
-			transferToast("Thread передачи данных успешно остановлен!");
+			try
+			{
+				super.cancel();
+				transferToast("Thread передачи данных успешно остановлен!");
+			}
+			catch (IOException e)
+			{
+				transferToast("Ошибка остановки SocketThread: " + e.getMessage());
+			}
 		}
 	};
 
 	/** Метод синхронизированного добавления клиентов в списки сервера. */
-	protected final void syncAddConnectedClient(BluetoothSocket socket)
+	protected final void syncAddConnectedClient(BluetoothSocket socket) throws IOException
 	{
-		// TODO: возможно стоит подписывать потоки методом setName()
-		final SocketThread thread = new ConnectionThread(socket);
+		// TODO: возможно стоит подписывать потоки методом setName()? Например в
+		// нём можно хранить имя пользователя-отправителя.
+		ConnectionThread thread = new ConnectionThread(socket);
 
 		synchronized (aConnectionThread)
 		{
@@ -309,7 +381,7 @@ abstract class ChatService extends Service implements IChatClient
 				if (confirmationEmpty == true)
 				{
 					// Если нет ожидаемых подтверждений доставки
-					transferResponseToUIThread(null, GUIRequestCode._UNBLOCK);
+					transferResponseToUIThread(GUIRequestCode._UNBLOCK, null);
 				}
 			}
 		}
@@ -319,23 +391,46 @@ abstract class ChatService extends Service implements IChatClient
 	/** Messenger взаимодействия с GUI. */
 	protected Messenger aMessenger;
 
+	// TODO: Нужно ли его синхронизировать из-за доступа к общему Messenger'у?
 	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */
-	protected final synchronized void transferResponseToUIThread(String str, GUIRequestCode code)
+	protected final synchronized void transferResponseToUIThread(GUIRequestCode code, String str)
 	{
-		try
+		if (aMessenger != null)
+			try
+			{
+				Message msg = Message.obtain(null, code.getId(), 0, 0);
+				msg.obj = str;
+				aMessenger.send(msg);
+			}
+			catch (RemoteException e)
+			{
+				// TODO: пока нет извещений об исключениях Messenger'а
+			}
+		else
 		{
-			Message msg = Message.obtain(null, code.getId(), 0, 0);
-			msg.obj = str;
-			aMessenger.send(msg);
-		}
-		catch (RemoteException e)
-		{
+			// TODO: пока нет извещений об исключениях Messenger'а
 		}
 	}
 
 	/** Формирование запроса на вывод Toast в Thread'е UI. */
 	protected final void transferToast(String str)
 	{
-		transferResponseToUIThread(str, GUIRequestCode._TOAST);
+		transferResponseToUIThread(GUIRequestCode._TOAST, "st: " + str);
+	}
+
+	// TODO: нет гарантий вызова метода при аварийной отвязке
+	public void closeChatClient()
+	{
+		for (ConnectionThread thread : aConnectionThread)
+			thread.cancel();
+
+		aMessenger = null;
+
+		aConfirmationTimer.cancel();
+
+		final int tasksCount = aConfirmationTimer.purge();
+		if (tasksCount > 0)
+			Toast.makeText(getBaseContext(), "Заданий таймера подтверждения удалено: " + tasksCount, Toast.LENGTH_LONG)
+					.show();
 	}
 }

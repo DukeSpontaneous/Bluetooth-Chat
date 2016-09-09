@@ -33,7 +33,7 @@ public final class ChatActivity extends Activity
 	private static final int REQUEST_DISCOVERABLE_BT = 2;
 	/** Адаптер умолчательного Bluetooth устройсва Android. */
 	private final BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
+	
 	/** Список сообщений. */
 	private ArrayList<String> mMessages;
 	/** Список-адаптер сообщений. */

@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService"/>
-<fullyQualifiedTypeName name="android.content.ServiceConnection"/>
-<fullyQualifiedTypeName name="android.content.ComponentName"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.LocalBinder"/>
 <fullyQualifiedTypeName name="android.bluetooth.BluetoothServerSocket"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.AcceptThread"/>
@@ -16,7 +13,6 @@
 <fullyQualifiedTypeName name="android.widget.ListView"/>
 <fullyQualifiedTypeName name="android.view.View"/>
 <fullyQualifiedTypeName name="android.view.LayoutInflater"/>
-<fullyQualifiedTypeName name="java.io.IOException"/>
 <fullyQualifiedTypeName name="android.widget.Button"/>
 <fullyQualifiedTypeName name="android.widget.EditText"/>
 <fullyQualifiedTypeName name="android.bluetooth.BluetoothAdapter"/>
@@ -48,16 +44,20 @@
 <fullyQualifiedTypeName name="java.io.InputStream"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatServerService.ConnectedThread"/>
 <fullyQualifiedTypeName name="java.util.Timer"/>
-<fullyQualifiedTypeName name="java.lang.Override"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Communication"/>
 <fullyQualifiedTypeName name="java.lang.Integer"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.SocketThread"/>
 <fullyQualifiedTypeName name="java.util.HashMap"/>
 <fullyQualifiedTypeName name="java.util.Collection"/>
 <fullyQualifiedTypeName name="java.util.ArrayList"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.GUIRequestCode"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.R"/>
+<fullyQualifiedTypeName name="java.lang.Override"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.ResenderTask"/>
+<fullyQualifiedTypeName name="java.util.TimerTask"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.ChatClientService"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.MessagePacket"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.MessageCode"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.GUIRequestCode"/>
-<fullyQualifiedTypeName name="java.util.TimerTask"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.R"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.SocketThread"/>
+<fullyQualifiedTypeName name="java.io.IOException"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.ChatService.ConnectionThread"/>
 </qualifiedTypeNameHistroy>
