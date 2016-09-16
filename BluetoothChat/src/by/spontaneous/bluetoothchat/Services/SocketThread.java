@@ -21,13 +21,13 @@ abstract class SocketThread extends Thread
 
 		tInStream = socket.getInputStream();
 		tOutStream = socket.getOutputStream();
-	}
+	};
 
 	/** Обработчик остановки Thread, закрывающий свой BluetoothSocket. */
-	protected void cancel() throws IOException
+	protected void close() throws IOException
 	{
 		tSocket.close();
-	}
+	};
 	
 	public void syncWrite(byte[] bytes) throws IOException
 	{
@@ -35,7 +35,7 @@ abstract class SocketThread extends Thread
 		{
 			tOutStream.write(bytes);
 		}		
-	}
+	};
 	
 	public void syncWriteSeries(ArrayList<byte[]> bytesList) throws IOException
 	{
@@ -44,5 +44,5 @@ abstract class SocketThread extends Thread
 			for(byte[] bytes : bytesList)
 				tOutStream.write(bytes);
 		}		
-	}
+	};
 }

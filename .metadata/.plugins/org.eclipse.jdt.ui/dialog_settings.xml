@@ -63,8 +63,8 @@
 			<item value="600" key="DIALOG_WIDTH"/>
 			<item value="1|Segoe UI|9.0|0|WINDOWS|1|-12|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI" key="DIALOG_FONT_NAME"/>
 			<item value="500" key="DIALOG_HEIGHT"/>
-			<item value="8" key="DIALOG_X_ORIGIN"/>
-			<item value="8" key="DIALOG_Y_ORIGIN"/>
+			<item value="620" key="DIALOG_X_ORIGIN"/>
+			<item value="349" key="DIALOG_Y_ORIGIN"/>
 		</section>
 	</section>
 	<section name="NewClassWizardPage">
@@ -76,9 +76,16 @@
 	</section>
 	<section name="org.eclipse.jdt.internal.ui.typehierarchy.QuickHierarchy">
 		<item value="true" key="org.eclipse.jdt.internal.ui.typehierarchy.HierarchyInformationControlDIALOG_USE_PERSISTED_SIZE"/>
-		<item value="306" key="org.eclipse.jdt.internal.ui.typehierarchy.HierarchyInformationControlDIALOG_HEIGHT"/>
-		<item value="350" key="org.eclipse.jdt.internal.ui.typehierarchy.HierarchyInformationControlDIALOG_WIDTH"/>
+		<item value="440" key="org.eclipse.jdt.internal.ui.typehierarchy.HierarchyInformationControlDIALOG_HEIGHT"/>
+		<item value="500" key="org.eclipse.jdt.internal.ui.typehierarchy.HierarchyInformationControlDIALOG_WIDTH"/>
 		<item value="false" key="org.eclipse.jdt.internal.ui.typehierarchy.HierarchyInformationControlDIALOG_USE_PERSISTED_LOCATION"/>
+	</section>
+	<section name="org.eclipse.jdt.internal.ui.text.QuickOutline">
+		<item value="true" key="org.eclipse.jdt.internal.ui.text.JavaOutlineInformationControlDIALOG_USE_PERSISTED_SIZE"/>
+		<item value="500" key="org.eclipse.jdt.internal.ui.text.JavaOutlineInformationControlDIALOG_WIDTH"/>
+		<item value="440" key="org.eclipse.jdt.internal.ui.text.JavaOutlineInformationControlDIALOG_HEIGHT"/>
+		<item value="false" key="GoIntoTopLevelTypeAction.isChecked"/>
+		<item value="false" key="org.eclipse.jdt.internal.ui.text.JavaOutlineInformationControlDIALOG_USE_PERSISTED_LOCATION"/>
 	</section>
 	<section name="RefactoringWizard.preview">
 		<item value="600" key="width"/>
@@ -100,7 +107,7 @@
 	</section>
 	<section name="completion_proposal_size">
 		<item value="252" key="size.y"/>
-		<item value="353" key="size.x"/>
+		<item value="507" key="size.x"/>
 	</section>
 	<section name="JavaElementSearchActions">
 	</section>

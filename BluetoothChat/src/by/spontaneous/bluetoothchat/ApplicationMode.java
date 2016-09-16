@@ -12,12 +12,12 @@ enum ApplicationMode
 	ApplicationMode(int code)
 	{
 		id = code;
-	}
+	};
 
 	public final int getId()
 	{
 		return id;
-	}
+	};
 
 	public final static ApplicationMode fromId(int code)
 	{
@@ -27,5 +27,5 @@ enum ApplicationMode
 			return list[code];
 		else
 			return ApplicationMode.UNKNOWN;
-	}
+	};
 }

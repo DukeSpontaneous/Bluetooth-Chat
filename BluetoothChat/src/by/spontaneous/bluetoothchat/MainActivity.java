@@ -24,6 +24,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import by.spontaneous.bluetoothchat.Services.ChatClientService;
+import by.spontaneous.bluetoothchat.Services.ChatServerService;
 
 public final class MainActivity extends Activity
 {
@@ -42,8 +43,28 @@ public final class MainActivity extends Activity
 	/** Приёмщик сигналов об окончании процедуры поиска. */
 	private BroadcastReceiver mDiscoveryFinishedReceiver;
 
+	/** Точка доступа к ChatServerService. */
+	private ChatServerService mChatServerService;
 	/** Точка доступа к ChatClientService. */
 	private ChatClientService mChatClientService;
+
+	/** Объект подключения к Service'у ChatClientService */
+	private final ServiceConnection mServerConnection = new ServiceConnection()
+	{
+		@Override
+		public void onServiceConnected(ComponentName className, IBinder service)
+		{
+			// Получение объекта сервиса при успешном подключении
+			mChatServerService = ((ChatServerService.LocalBinder) service).getService();
+		};
+
+		@Override
+		public void onServiceDisconnected(ComponentName arg0)
+		{
+			Toast.makeText(getBaseContext(), "Неявное отключение сервиса Server...", Toast.LENGTH_LONG).show();
+			mChatServerService = null;
+		};
+	};
 
 	/** Объект подключения к Service'у ChatClientService */
 	private final ServiceConnection mClientConnection = new ServiceConnection()
@@ -51,18 +72,16 @@ public final class MainActivity extends Activity
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service)
 		{
-			// Получение ссылки на объект-сервис при успешном подключении к
-			// chatClientService
+			// Получение объекта сервиса при успешном подключении
 			mChatClientService = ((ChatClientService.LocalBinder) service).getService();
-		}
+		};
 
 		@Override
 		public void onServiceDisconnected(ComponentName arg0)
 		{
-			Toast.makeText(getBaseContext(), "Неявное отключение сервиса ServiceConnection clientConnection...",
-					Toast.LENGTH_LONG).show();
+			Toast.makeText(getBaseContext(), "Неявное отключение сервиса Client...", Toast.LENGTH_LONG).show();
 			mChatClientService = null;
-		}
+		};
 	};
 
 	@Override
@@ -83,7 +102,7 @@ public final class MainActivity extends Activity
 			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
 			{
 				discoverDevices(isChecked);
-			}
+			};
 		});
 
 		final Button btn = (Button) findViewById(R.id.buttonRunServer);
@@ -95,7 +114,7 @@ public final class MainActivity extends Activity
 				sw.setChecked(false);
 
 				startConnection(null);
-			}
+			};
 		});
 
 		final ListView listView = (ListView) findViewById(R.id.listViewDevices);
@@ -108,7 +127,7 @@ public final class MainActivity extends Activity
 
 				BluetoothDevice device = mListAdapter.getItem(position);
 				startConnection(device);
-			}
+			};
 		});
 
 		mDiscoveredDevices = new ArrayList<BluetoothDevice>();
@@ -122,7 +141,7 @@ public final class MainActivity extends Activity
 				final BluetoothDevice device = getItem(position);
 				((TextView) view.findViewById(android.R.id.text1)).setText(device.getName());
 				return view;
-			}
+			};
 		};
 
 		listView.setAdapter(mListAdapter);
@@ -134,7 +153,10 @@ public final class MainActivity extends Activity
 		}
 
 		// Bind to LocalService
-		Intent intentC = new Intent(getApplicationContext(), ChatClientService.class);
+		Intent intentC = new Intent(getApplicationContext(), ChatServerService.class);
+		bindService(intentC, mServerConnection, Context.BIND_AUTO_CREATE);
+
+		intentC = new Intent(getApplicationContext(), ChatClientService.class);
 		bindService(intentC, mClientConnection, Context.BIND_AUTO_CREATE);
 	};
 
@@ -151,6 +173,11 @@ public final class MainActivity extends Activity
 			// осуществившего привязку.
 
 			// Unbind from the service
+			if (mChatServerService != null)
+			{
+				unbindService(mServerConnection);
+			}
+
 			if (mChatClientService != null)
 			{
 				unbindService(mClientConnection);
@@ -172,18 +199,18 @@ public final class MainActivity extends Activity
 			{
 			case RESULT_OK:
 			{
-				Toast.makeText(getBaseContext(), "Bluetooth успешно активирован!", Toast.LENGTH_LONG).show();
+				Toast.makeText(getBaseContext(), "Bluetooth успешно активирован!", Toast.LENGTH_SHORT).show();
 				break;
 			}
 			case RESULT_CANCELED:
 			{
-				Toast.makeText(getBaseContext(), "Bluetooth не был активирован...", Toast.LENGTH_LONG).show();
+				Toast.makeText(getBaseContext(), "Bluetooth не был активирован...", Toast.LENGTH_SHORT).show();
 				break;
 			}
 			default:
 			{
 				Toast.makeText(getBaseContext(), "Неопределённый результат обработки запроса REQUEST_ENABLE_BT",
-						Toast.LENGTH_LONG).show();
+						Toast.LENGTH_SHORT).show();
 				break;
 			}
 			}
@@ -227,7 +254,7 @@ public final class MainActivity extends Activity
 								mListAdapter.notifyDataSetChanged();
 							}
 						}
-					}
+					};
 				};
 			}
 
@@ -247,7 +274,7 @@ public final class MainActivity extends Activity
 						// unregisterReceiver(discoveryFinishedReceiver);
 
 						mBluetoothAdapter.startDiscovery();
-					}
+					};
 				};
 			}
 

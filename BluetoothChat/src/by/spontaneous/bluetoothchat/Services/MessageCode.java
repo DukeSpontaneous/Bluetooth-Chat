@@ -17,12 +17,12 @@ enum MessageCode
 	MessageCode(byte code)
 	{
 		id = code;
-	}
+	};
 
 	public final byte getId()
 	{
 		return id;
-	}
+	};
 
 	public final static MessageCode fromId(byte code)
 	{
@@ -32,5 +32,5 @@ enum MessageCode
 			return list[code];
 		else
 			return MessageCode.__UNKNOWN;
-	}
+	};
 }

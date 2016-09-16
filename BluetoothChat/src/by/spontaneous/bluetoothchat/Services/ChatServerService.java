@@ -21,7 +21,7 @@ public final class ChatServerService extends ChatService
 		{
 			return ChatServerService.this;
 		}
-	}
+	};
 
 	private final IBinder mBinder = new LocalBinder();
 
@@ -29,22 +29,22 @@ public final class ChatServerService extends ChatService
 	public final IBinder onBind(Intent intent)
 	{
 		return mBinder;
-	}
+	};
 
 	@Override
 	public void onCreate()
 	{
 		super.onCreate();
-		Toast.makeText(getBaseContext(), "ChatServerService onCreate()", Toast.LENGTH_LONG).show();
-	}
+		Toast.makeText(getBaseContext(), "ChatServerService onCreate()", Toast.LENGTH_SHORT).show();
+	};
 
 	@Override
 	public void onDestroy()
 	{
 		super.onDestroy();
 		destroyAcceptThread();
-		Toast.makeText(getBaseContext(), "ChatServerService onDestroy()", Toast.LENGTH_LONG).show();
-	}
+		Toast.makeText(getBaseContext(), "ChatServerService onDestroy()", Toast.LENGTH_SHORT).show();
+	};
 
 	/** Thread серверного ожидания новых клиентов. */
 	private AcceptThread mAcceptThread;
@@ -57,7 +57,7 @@ public final class ChatServerService extends ChatService
 		public AcceptThread(BluetoothServerSocket socket)
 		{
 			tServerSocket = socket;
-		}
+		};
 
 		public void run()
 		{
@@ -65,16 +65,17 @@ public final class ChatServerService extends ChatService
 			{
 				transferToast("Ожидание нового клиента...");
 				try
-				{					
+				{
 					final BluetoothSocket clientSocket = tServerSocket.accept();
-					syncAddConnectedClient(clientSocket);					
+					syncAddConnectionSocket(clientSocket);
 				}
 				catch (IOException e)
 				{
-					// Основной выход из цикла ожидания
-					if(e.getMessage() == "[JSR82] accept: Connection is not created (failed or aborted).")
+					// Основной выход из цикла ожидания (ServerSocket был
+					// закрыт?)
+					if (e.getMessage() == "[JSR82] accept: Connection is not created (failed or aborted).")
 						return;
-					
+
 					// Непредвиденный выход из цикла ожидания...
 					transferToast(e.getMessage());
 					break;
@@ -84,10 +85,10 @@ public final class ChatServerService extends ChatService
 			transferToast("Ошибка: ожидание новых клиентов аварийно прекращено!");
 			transferResponseToUIThread(GUIRequestCode._QUIT, null);
 			this.cancel();
-		}
+		};
 
-		/** Will cancel the listening socket, and cause the thread to finish */
-		public void cancel()
+		/** Закрывает ServerSocket бесконечной прослушки. */
+		private void cancel()
 		{
 			try
 			{
@@ -98,8 +99,8 @@ public final class ChatServerService extends ChatService
 				transferToast("Ошибка ServerSocket.cancel(): " + e.getMessage());
 			}
 			transferResponseToUIThread(GUIRequestCode._QUIT, null);
-		}
-	}
+		};
+	};
 
 	/** Метод инициализации пары сокет-нить прослушки подключений сервера. */
 	private boolean createAcceptThread()
@@ -128,7 +129,7 @@ public final class ChatServerService extends ChatService
 		mAcceptThread.start();
 
 		return true;
-	}
+	};
 
 	/**
 	 * Метод уничтожения Accept-пары Сокет-Нить прослушки подключений сервера.
@@ -141,12 +142,18 @@ public final class ChatServerService extends ChatService
 			mAcceptThread.cancel();
 			mAcceptThread = null;
 
-			Toast.makeText(getBaseContext(), "AcceptThread успешно завершён!", Toast.LENGTH_LONG)
-					.show();
+			Toast.makeText(getBaseContext(), "AcceptThread успешно завершён!", Toast.LENGTH_SHORT).show();
 		}
-	}
+	};
 
 	// Server-реализация IChatClient для ChatActivity
+	/** Обновляет Messanger связи с UI. Возвращает false, если аргумент null. */
+	@Override
+	public boolean updateMessenger(Messenger selectedMessenger)
+	{
+		return super.updateMessanger(selectedMessenger);
+	};
+
 	/**
 	 * Server-реализация одного из методов интерфейса IChatClient, отвечающего
 	 * за создание потока связи с приложением, запущенном в режиме Server.
@@ -154,33 +161,30 @@ public final class ChatServerService extends ChatService
 	 * ChatClientService.
 	 */
 	@Override
-	public boolean connectToServer(Messenger selectedMessenger)
+	public boolean startConnection(Messenger selectedMessenger)
 	{
-		if (selectedMessenger != null)
+		if (super.startConnection(selectedMessenger))
 		{
-			aMessenger = selectedMessenger;
-
 			// Попытка запустить сервер
 			return createAcceptThread();
 		}
 		else
 		{
-			Toast.makeText(getBaseContext(), "Ошибка: selectedMessenger == null", Toast.LENGTH_LONG).show();
 			return false;
 		}
-	}
+	};
 
 	@Override
 	public void sendResponse(String msg)
 	{
 		// Формирование сообщения согласно выбранному протоколу
 		broadcasting(null, new MessagePacket(MessageCode.__TEXT, ++aLastOutputMsgNumber, msg));
-	}
+	};
 
 	@Override
-	public final void closeChatClient()
-	{		
+	public final void stopConnection()
+	{
 		destroyAcceptThread();
-		super.closeChatClient();
-	}
+		super.stopConnection();
+	};
 }

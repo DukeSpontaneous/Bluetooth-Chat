@@ -8,6 +8,7 @@
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
+			<item value="asdd"/>
 			<item value="synchronized"/>
 			<item value="ConnectedThread"/>
 			<item value="writ"/>

@@ -20,7 +20,7 @@ public final class ChatClientService extends ChatService
 		{
 			return ChatClientService.this;
 		}
-	}
+	};
 
 	private final IBinder mBinder = new LocalBinder();
 
@@ -28,21 +28,21 @@ public final class ChatClientService extends ChatService
 	public final IBinder onBind(Intent intent)
 	{
 		return mBinder;
-	}
+	};
 
 	@Override
 	public void onCreate()
 	{
 		super.onCreate();
-		Toast.makeText(getBaseContext(), "ChatClientService onCreate()", Toast.LENGTH_LONG).show();
-	}
+		Toast.makeText(getBaseContext(), "ChatClientService onCreate()", Toast.LENGTH_SHORT).show();
+	};
 
 	@Override
 	public void onDestroy()
-	{		
+	{
 		super.onDestroy();
-		Toast.makeText(getBaseContext(), "ChatClientService onDestroy()", Toast.LENGTH_LONG).show();
-	}
+		Toast.makeText(getBaseContext(), "ChatClientService onDestroy()", Toast.LENGTH_SHORT).show();
+	};
 
 	/** Внешний целевой BluetoothDevice-сервер (null для самого сервера). */
 	private BluetoothDevice mMasterDevice;
@@ -50,9 +50,16 @@ public final class ChatClientService extends ChatService
 	public void setMasterDevice(BluetoothDevice mDevice)
 	{
 		mMasterDevice = mDevice;
-	}
+	};
 
 	// Client-реализация IChatClient для ChatActivity
+	/** Обновляет Messanger связи с UI. Возвращает false, если аргумент null. */
+	@Override
+	public boolean updateMessenger(Messenger selectedMessenger)
+	{
+		return super.updateMessanger(selectedMessenger);
+	};
+
 	/**
 	 * Client-реализация одного из методов интерфейса IChatClient, отвечающего
 	 * за создание потока связи с приложением, запущенном в режиме Server.
@@ -60,19 +67,17 @@ public final class ChatClientService extends ChatService
 	 * ChatClientService.
 	 */
 	@Override
-	public boolean connectToServer(Messenger selectedMessenger)
+	public boolean startConnection(Messenger selectedMessenger)
 	{
-		if (selectedMessenger != null)
+		if (super.startConnection(selectedMessenger))
 		{
-			aMessenger = selectedMessenger;
-
 			try
 			{
 				UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
-				
+
 				final BluetoothSocket serverSocket = mMasterDevice.createRfcommSocketToServiceRecord(myid);
 				serverSocket.connect();
-				syncAddConnectedClient(serverSocket);
+				syncAddConnectionSocket(serverSocket);
 				return true;
 			}
 			catch (IOException e)
@@ -86,22 +91,21 @@ public final class ChatClientService extends ChatService
 		}
 		else
 		{
-			Toast.makeText(getBaseContext(), "Ошибка: selectedMessenger == null", Toast.LENGTH_LONG).show();
 			return false;
 		}
-	}
+	};
 
 	@Override
 	public void sendResponse(String msg)
 	{
 		// Формирование сообщения согласно выбранному протоколу
 		broadcasting(null, new MessagePacket(MessageCode.__TEXT, ++aLastOutputMsgNumber, msg));
-	}
+	};
 
 	@Override
-	public final void closeChatClient()
+	public final void stopConnection()
 	{
 		mMasterDevice = null;
-		super.closeChatClient();
-	}
+		super.stopConnection();
+	};
 }

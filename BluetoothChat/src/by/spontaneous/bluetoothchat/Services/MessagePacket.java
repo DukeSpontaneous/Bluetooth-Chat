@@ -27,7 +27,7 @@ final class MessagePacket
 		}
 
 		return macAddressBytes;
-	}
+	};
 
 	/** Возвращает byte[] представление адреса отправителя. */
 	private final static byte[] getSenderAddressBytes(String strAddress)
@@ -43,7 +43,7 @@ final class MessagePacket
 		}
 
 		return macAddressBytes;
-	}
+	};
 
 	public final byte[] bytes;
 
@@ -78,7 +78,7 @@ final class MessagePacket
 			code = MessageCode.__UNKNOWN;
 			message = null;
 		}
-	}
+	};
 
 	/** Супер-конструктор, инициализирующий произвольный набор параметров. */
 	private MessagePacket(byte[] inAddress, MessageCode inCode, int inId, String inMessage)
@@ -98,31 +98,43 @@ final class MessagePacket
 
 		System.arraycopy(bHash, 0, bytes, 0, bHash.length);
 		System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
-	}
+	};
 
 	/** Экспресс-конструктор пакета-запроса. */
 	public MessagePacket(MessageCode inCode)
 	{
 		this(MY_BT_MAC_ADDRESS, inCode, 0, null);
-	}
-	
+	};
+
 	/** Экспресс-конструктор нумерованного пакета-запроса. */
 	public MessagePacket(MessageCode inCode, int inId)
 	{
 		this(MY_BT_MAC_ADDRESS, inCode, inId, null);
-	}
-	
+	};
+
 	/** Экспресс-конструктор пакета-сообщения. */
 	public MessagePacket(MessageCode inCode, int inId, String inMessage)
 	{
 		this(MY_BT_MAC_ADDRESS, inCode, inId, inMessage);
-	}	
+	};
 
 	/** Экспресс-конструктор суррогатных HELLO-пакетов сервера. */
 	public MessagePacket(String inAddress, int inId)
 	{
 		this(getSenderAddressBytes(inAddress), MessageCode.__HELLO, inId, null);
-	}
+	};
+
+	/** Экспресс-конструктор PING-пакетов. */
+	public MessagePacket(long time)
+	{
+		this(MY_BT_MAC_ADDRESS, MessageCode.__PING, 0, Long.toString(time, Character.MAX_RADIX));
+	};
+
+	/** Экспресс-конструктор PONG-пакетов. */
+	public MessagePacket(String time)
+	{
+		this(MY_BT_MAC_ADDRESS, MessageCode.__PONG, 0, time);
+	};
 
 	/**
 	 * Проверка соответствия значения поля Hash code фактическому Hash code
@@ -139,7 +151,7 @@ final class MessagePacket
 		{
 			return false;
 		}
-	}
+	};
 
 	/** Возвращает byte[]-тело пакета, по которому вычисляется Hash. */
 	private final byte[] getBodyBytes()
@@ -157,26 +169,27 @@ final class MessagePacket
 		System.arraycopy(bMsg, 0, bBuf, bAddr.length + bId.length + 1, bMsg.length);
 
 		return bBuf;
-	}
+	};
 
 	/** Возвращает String представление адреса отправителя. */
 	public final String getSenderAddressString()
 	{
-		final String digits = "0123456789ABCDEF";
-		String hex = "";
+		StringBuilder hex = new StringBuilder();
+
 		if (address != null)
 		{
 			for (int i = 0;;)
 			{
-				// "& 0xFF" нужно для приведения к беззнаковому виду
-				hex += digits.charAt((address[i] & 0xFF) / 16);
-				hex += digits.charAt((address[i] & 0xFF) % 16);
+				hex.append(Integer.toString(address[i] & 0xF0 >> 4, 16));
+				hex.append(Integer.toString(address[i] & 0x0F, 16));
+
 				if (++i < address.length)
-					hex += ':';
+					hex.append(':');
 				else
 					break;
 			}
 		}
-		return hex;
-	}
+
+		return hex.toString();
+	};
 }

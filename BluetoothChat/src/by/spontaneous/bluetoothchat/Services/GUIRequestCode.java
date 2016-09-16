@@ -8,19 +8,20 @@ public enum GUIRequestCode
 	_MESSAGE((byte)2),
 	_BLOCK((byte)3),
 	_UNBLOCK((byte)4),
-	_QUIT((byte)5);
+	_LONELINESS((byte)5),
+	_QUIT((byte)6);
 
 	private final byte id;
 
 	GUIRequestCode(byte code)
 	{
 		id = code;
-	}
+	};
 
 	public final byte getId()
 	{
 		return id;
-	}
+	};
 
 	public final static GUIRequestCode fromId(byte code)
 	{
@@ -30,5 +31,5 @@ public enum GUIRequestCode
 			return list[code];
 		else
 			return GUIRequestCode._UNKNOWN;
-	}
+	};
 }
