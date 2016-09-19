@@ -99,6 +99,7 @@ public final class ChatServerService extends ChatService
 				transferToast("Ошибка ServerSocket.cancel(): " + e.getMessage());
 			}
 			transferResponseToUIThread(GUIRequestCode._QUIT, null);
+			transferCut(this);
 		};
 	};
 

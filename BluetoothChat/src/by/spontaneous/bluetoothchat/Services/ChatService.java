@@ -93,9 +93,8 @@ abstract class ChatService extends Service implements IChatClient
 									// Число попыток повторной отправки
 									// превышает устоновленный лимит
 									transferToast("Превышено число попыток переотправки!");
-									thread.goodbyeSocketClose();
 
-									// Отключение таймера
+									// Отмена задания
 									this.cancel();
 								}
 							}
@@ -276,8 +275,7 @@ abstract class ChatService extends Service implements IChatClient
 					syncIncomingGoodbye(packet);
 					broadcasting(this, packet);
 
-					this.goodbyeSocketClose();
-					return;
+					break;
 				}
 				default:
 					transferToast("Ошибка: неопределённый тип сообщения!");
@@ -360,9 +358,6 @@ abstract class ChatService extends Service implements IChatClient
 				transferToast("Ошибка отправки GOODBYE при завершении SocketThread: " + e.getMessage());
 			}
 
-			// Прослушка остановлена: удалить это подключение из списков
-			syncRemoveConnectedClient(this);
-
 			try
 			{
 				super.close();
@@ -372,6 +367,11 @@ abstract class ChatService extends Service implements IChatClient
 			{
 				transferToast("Ошибка SocketThread.close(): " + e.getMessage());
 			}
+
+			// Прослушка остановлена: удалить это подключение из списков
+			syncRemoveConnectedClient(this);
+			
+			transferCut(this);
 		};
 
 	}
@@ -460,6 +460,31 @@ abstract class ChatService extends Service implements IChatClient
 		}
 	};
 
+	protected final void transferCut(Thread thread)
+	{
+		if (aMessenger != null)
+		{
+			synchronized (aMessenger)
+			{
+				try
+				{
+					Message msg = Message.obtain(null, GUIRequestCode._CUT.getId(), 0, 0);
+					msg.obj = thread;
+					aMessenger.send(msg);
+				}
+				catch (RemoteException e)
+				{
+					// TODO: пока нет извещений об исключениях Messenger'а
+				}
+			}
+		}
+		else
+		{
+			// TODO: пока нет извещений об исключениях Messenger'а
+		}
+	}
+	
+	
 	/** Формирование запроса на вывод Toast в Thread'е UI. */
 	protected final void transferToast(String str)
 	{
@@ -483,17 +508,17 @@ abstract class ChatService extends Service implements IChatClient
 	/** Инициализирует новый Timer. */
 	public boolean startConnection(Messenger selectedMessenger)
 	{
-		if(updateMessanger(selectedMessenger))
+		if (updateMessanger(selectedMessenger))
 		{
 			aConfirmationTimer = new Timer();
-			return true;			
+			return true;
 		}
 		else
 		{
 			return false;
-		}		
+		}
 	}
-	
+
 	// TODO: сейчас вызывается финальным уничтожением Fragment'a подключения
 	public void stopConnection()
 	{

@@ -128,6 +128,7 @@ public class ConnectionFragment extends Fragment
 					// добавленное сообщение сейчас вне зоны видимости)?
 					// TODO: какой-то подвох остаЄтс€ с этими прокрутками
 					// (иногда перестаЄт прокручивать после поворота экрана)
+					final ListView listView = (ListView) viewFragment.findViewById(R.id.listViewChat);
 					listView.smoothScrollToPosition(fMessagesAdapter.getCount() - 1);
 					break;
 				case _BLOCK:
@@ -147,6 +148,17 @@ public class ConnectionFragment extends Fragment
 						activity.finish();
 					}
 					break;
+				case _CUT:
+					try
+					{
+						((Thread) msg.obj).join();
+					}
+					catch (InterruptedException e)
+					{
+						Toast.makeText(activity.getBaseContext(), "ќшибка Thread.join(): " + e.getMessage(),
+								Toast.LENGTH_SHORT).show();
+					}
+					break;
 				case _QUIT:
 					activity.finish();
 					break;
@@ -161,7 +173,8 @@ public class ConnectionFragment extends Fragment
 			};
 		});
 
-		// Toast.makeText(activity.getBaseContext(), "ConnectionFragment перерисован()!", Toast.LENGTH_SHORT).show();
+		// Toast.makeText(activity.getBaseContext(), "ConnectionFragment
+		// перерисован()!", Toast.LENGTH_SHORT).show();
 
 		return viewFragment;
 	};
@@ -175,7 +188,7 @@ public class ConnectionFragment extends Fragment
 
 		super.onDestroy();
 	};
-	
+
 	/**
 	 * ѕопытка передать Messenger дл€ Thread'ов выбранного Service. »спользует
 	 * Messenger, и соответственно может быть использован только после

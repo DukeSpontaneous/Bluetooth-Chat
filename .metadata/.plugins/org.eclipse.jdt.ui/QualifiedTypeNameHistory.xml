@@ -47,7 +47,6 @@
 <fullyQualifiedTypeName name="java.util.Date"/>
 <fullyQualifiedTypeName name="java.lang.Character"/>
 <fullyQualifiedTypeName name="java.util.Timer"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.GUIRequestCode"/>
 <fullyQualifiedTypeName name="android.os.Messenger"/>
 <fullyQualifiedTypeName name="android.app.FragmentManager"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ChatActivity.ConnectionFragment"/>
@@ -60,4 +59,5 @@
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ApplicationMode"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.ChatService"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.R"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.GUIRequestCode"/>
 </qualifiedTypeNameHistroy>

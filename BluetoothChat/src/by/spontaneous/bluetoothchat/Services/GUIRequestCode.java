@@ -8,8 +8,9 @@ public enum GUIRequestCode
 	_MESSAGE((byte)2),
 	_BLOCK((byte)3),
 	_UNBLOCK((byte)4),
-	_LONELINESS((byte)5),
-	_QUIT((byte)6);
+	_CUT((byte)5),
+	_LONELINESS((byte)6),
+	_QUIT((byte)7);
 
 	private final byte id;
 
