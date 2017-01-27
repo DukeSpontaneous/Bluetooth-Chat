@@ -1,4 +1,4 @@
-package by.spontaneous.bluetoothchat.Services;
+п»їpackage by.spontaneous.bluetoothchat.Services;
 
 import java.io.IOException;
 import java.util.Date;
@@ -16,524 +16,413 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.widget.Toast;
 
-abstract class ChatService extends Service implements IChatClient
-{
-	/** Список Thread'ов поднятых подключений. */
-	protected final ArrayList<ConnectionThread> aConnectionThread = new ArrayList<ConnectionThread>();
+public abstract class ChatService extends Service implements IChatClient {
+    /** РЎРїРёСЃРѕРє Thread'РѕРІ РїРѕРґРЅСЏС‚С‹С… РїРѕРґРєР»СЋС‡РµРЅРёР№. */
+    protected final ArrayList<ConnectionThread> aConnectionThread = new ArrayList<ConnectionThread>();
 
-	/** ID последнего исходящего сообщения. */
-	protected volatile int aLastOutputMsgNumber = 0;
+    /** Messenger РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ GUI. */
+    protected volatile Messenger aMessenger;
+    
+    /** ID РїРѕСЃР»РµРґРЅРµРіРѕ РёСЃС…РѕРґСЏС‰РµРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ. */
+    protected volatile int aLastOutputMsgNumber = 0;
 
-	/**
-	 * Хэш-карта ожидаемых подтверждений доставки сообщений (поток, список
-	 * пакетов). Опустошение этого списка может служить признаком разрешения
-	 * отправки новых исходящих сообщений (в этой реализации программы дело
-	 * обстоит именно таким образом).
-	 */
-	protected final HashMap<Thread, ArrayList<MessagePacket>> aConfirmationMap = new HashMap<Thread, ArrayList<MessagePacket>>();
-	protected final HashMap<String, Integer> aLastInputMsgNumberMap = new HashMap<String, Integer>();
+    /**
+     * РҐСЌС€-РєР°СЂС‚Р° РѕР¶РёРґР°РµРјС‹С… РїРѕРґС‚РІРµСЂР¶РґРµРЅРёР№ РґРѕСЃС‚Р°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№ (РїРѕС‚РѕРє, СЃРїРёСЃРѕРє
+     * РїР°РєРµС‚РѕРІ). РћРїСѓСЃС‚РѕС€РµРЅРёРµ СЌС‚РѕРіРѕ СЃРїРёСЃРєР° РјРѕР¶РµС‚ СЃР»СѓР¶РёС‚СЊ РїСЂРёР·РЅР°РєРѕРј СЂР°Р·СЂРµС€РµРЅРёСЏ
+     * РѕС‚РїСЂР°РІРєРё РЅРѕРІС‹С… РёСЃС…РѕРґСЏС‰РёС… СЃРѕРѕР±С‰РµРЅРёР№ (РІ СЌС‚РѕР№ СЂРµР°Р»РёР·Р°С†РёРё РїСЂРѕРіСЂР°РјРјС‹ РґРµР»Рѕ
+     * РѕР±СЃС‚РѕРёС‚ РёРјРµРЅРЅРѕ С‚Р°РєРёРј РѕР±СЂР°Р·РѕРј).
+     */
+    protected final HashMap<Thread, ArrayList<MessagePacket>> aConfirmationMap = new HashMap<Thread, ArrayList<MessagePacket>>();
+    protected final HashMap<String, Integer> aLastInputMsgNumberMap = new HashMap<String, Integer>();
 
-	// This class is thread-safe: multiple threads can share a single Timer
-	// object without the need for external synchronization.
+    // This class is thread-safe: multiple threads can share a single Timer
+    // object without the need for external synchronization.
 
-	private Timer aConfirmationTimer;
+    private Timer aConfirmationTimer;      
 
-	// Блок взаимодействия с Thread'ами подключений.
-	/**
-	 * Метод отправки сообщения сервером, рассылающий его всем клиентам, кроме
-	 * отправителя.
-	 */
-	protected void broadcasting(final Thread sender, final MessagePacket packet)
-	{
-		synchronized (aConnectionThread)
-		{
-			for (final ConnectionThread thread : aConnectionThread)
-			{
-				if (thread != sender)
-				{
-					synchronized (aConfirmationMap)
-					{
-						aConfirmationMap.get(thread).add(packet);
-					}
-					transferResponseToUIThread(GUIRequestCode._BLOCK, null);
+    // Р‘Р»РѕРє РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ Thread'Р°РјРё РїРѕРґРєР»СЋС‡РµРЅРёР№.
+    /**
+     * РњРµС‚РѕРґ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ СЃРµСЂРІРµСЂРѕРј, СЂР°СЃСЃС‹Р»Р°СЋС‰РёР№ РµРіРѕ РІСЃРµРј РєР»РёРµРЅС‚Р°Рј, РєСЂРѕРјРµ
+     * РѕС‚РїСЂР°РІРёС‚РµР»СЏ.
+     */
+    protected void broadcasting(final Thread sender, final MessagePacket packet) {
+	synchronized (aConnectionThread) {
+	    for (final ConnectionThread thread : aConnectionThread) {
+		if (thread != sender) {
+		    synchronized (aConfirmationMap) {
+			aConfirmationMap.get(thread).add(packet);
+		    }
+		    transferResponseToUIThread(GUIRequestCode._BLOCK, null);
 
-					// Добавление заданий проверки доставки
-					aConfirmationTimer.schedule(new TimerTask()
-					{
-						private int retrys = 3;
+		    // Р”РѕР±Р°РІР»РµРЅРёРµ Р·Р°РґР°РЅРёР№ РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚Р°РІРєРё
+		    aConfirmationTimer.schedule(new TimerTask() {
+			private int retrys = 3;
 
-						@Override
-						public void run()
-						{
-							// Обработка истечения времени ожидания
-							// подтверждения доставки.
-							boolean isNotConfirmed;
-							synchronized (aConfirmationMap)
-							{
-								isNotConfirmed = aConfirmationMap.get(thread).contains(packet);
-							}
+			@Override
+			public void run() {
+			    // РћР±СЂР°Р±РѕС‚РєР° РёСЃС‚РµС‡РµРЅРёСЏ РІСЂРµРјРµРЅРё РѕР¶РёРґР°РЅРёСЏ
+			    // РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РґРѕСЃС‚Р°РІРєРё.
+			    boolean isNotConfirmed;
+			    synchronized (aConfirmationMap) {
+				isNotConfirmed = aConfirmationMap.get(thread).contains(packet);
+			    }
 
-							if (isNotConfirmed == true)
-							{
-								if (retrys > 0)
-								{
-									transferToast("Переотправка... =[");
-									try
-									{
-										thread.syncWrite(packet.bytes);
-									}
-									catch (IOException e)
-									{
-										transferToast("Ошибка переотправки: " + e.getMessage());
-									}
-									--retrys;
-								}
-								else
-								{
-									// Число попыток повторной отправки
-									// превышает устоновленный лимит
-									transferToast("Превышено число попыток переотправки!");
+			    if (isNotConfirmed == true) {
+				if (retrys > 0) {
+				    transferToast("РџРµСЂРµРѕС‚РїСЂР°РІРєР°... =[");
+				    try {
+					thread.syncWrite(packet.bytes);
+				    } catch (IOException e) {
+					transferToast("РћС€РёР±РєР° РїРµСЂРµРѕС‚РїСЂР°РІРєРё: " + e.getMessage());
+				    }
+				    --retrys;
+				} else {
+				    // Р§РёСЃР»Рѕ РїРѕРїС‹С‚РѕРє РїРѕРІС‚РѕСЂРЅРѕР№ РѕС‚РїСЂР°РІРєРё
+				    // РїСЂРµРІС‹С€Р°РµС‚ СѓСЃС‚РѕРЅРѕРІР»РµРЅРЅС‹Р№ Р»РёРјРёС‚
+				    transferToast("РџСЂРµРІС‹С€РµРЅРѕ С‡РёСЃР»Рѕ РїРѕРїС‹С‚РѕРє РїРµСЂРµРѕС‚РїСЂР°РІРєРё!");
 
-									// Отмена задания
-									this.cancel();
-								}
-							}
-							else
-							{
-								this.cancel();
-							}
-						};
-
-					}, 2000, 3000);
-
-					try
-					{
-						thread.syncWrite(packet.bytes);
-					}
-					catch (IOException e)
-					{
-						transferToast("Ошибка итерации broadcasting(): " + e.getMessage());
-					}
+				    // РћС‚РјРµРЅР° Р·Р°РґР°РЅРёСЏ
+				    this.cancel();
 				}
-			}
+			    } else {
+				this.cancel();
+			    }
+			};
+
+		    }, 2000, 3000);
+
+		    try {
+			thread.syncWrite(packet.bytes);
+		    } catch (IOException e) {
+			transferToast("РћС€РёР±РєР° РёС‚РµСЂР°С†РёРё broadcasting(): " + e.getMessage());
+		    }
 		}
-	};
+	    }
+	}
+    };
 
-	/** Класс потоков сервера, принимающих сообщения подключенных клиентов. */
-	private final class ConnectionThread extends SocketThread
-	{
-		private long tLastTimePING;
+    /** РљР»Р°СЃСЃ РїРѕС‚РѕРєРѕРІ СЃРµСЂРІРµСЂР°, РїСЂРёРЅРёРјР°СЋС‰РёС… СЃРѕРѕР±С‰РµРЅРёСЏ РїРѕРґРєР»СЋС‡РµРЅРЅС‹С… РєР»РёРµРЅС‚РѕРІ. */
+    private class ConnectionThread extends SocketThread {
+	private long tLastTimePING;
 
-		public ConnectionThread(BluetoothSocket socket) throws IOException
-		{
-			super(socket);
+	public ConnectionThread(BluetoothSocket socket) throws IOException {
+	    super(socket);
 
-			final ArrayList<byte[]> bPackets = new ArrayList<byte[]>();
-			// Формирование своего HELLO-пакета
-			bPackets.add(new MessagePacket(MessageCode.__HELLO, aLastOutputMsgNumber).bytes);
+	    final ArrayList<byte[]> bPackets = new ArrayList<byte[]>();
+	    // Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СЃРІРѕРµРіРѕ HELLO-РїР°РєРµС‚Р°
+	    bPackets.add(new MessagePacket(MessageCode.__HELLO, aLastOutputMsgNumber).bytes);
 
-			// Формирование суррогатных HELLO-пакетов
-			synchronized (aLastInputMsgNumberMap)
-			{
-				Collection<String> keys = aLastInputMsgNumberMap.keySet();
-				for (String key : keys)
-					bPackets.add(new MessagePacket(key, aLastInputMsgNumberMap.get(key)).bytes);
-			}
-			this.syncWriteSeries(bPackets);
+	    // Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СЃСѓСЂСЂРѕРіР°С‚РЅС‹С… HELLO-РїР°РєРµС‚РѕРІ
+	    synchronized (aLastInputMsgNumberMap) {
+		Collection<String> keys = aLastInputMsgNumberMap.keySet();
+		for (String key : keys)
+		    bPackets.add(new MessagePacket(key, aLastInputMsgNumberMap.get(key)).bytes);
+	    }
+	    this.syncWriteSeries(bPackets);
 
-			// Задание PING'ования
-			aConfirmationTimer.schedule(new TimerTask()
-			{
-				@Override
-				public void run()
-				{
-					tLastTimePING = new Date().getTime();
-					try
-					{
-						syncWrite(new MessagePacket(tLastTimePING).bytes);
-					}
-					catch (IOException e)
-					{
-						this.cancel();
-					}
-				}
-
-			}, 5000, 5000);
-		};
-
-		/** Тело ConnectionThread (прослушка BluetoothSocket). */
+	    // Р—Р°РґР°РЅРёРµ PING'РѕРІР°РЅРёСЏ
+	    aConfirmationTimer.schedule(new TimerTask() {
 		@Override
-		public void run()
-		{
-			// TODO: Размер, конечно, под вопросом...
-			final byte[] buffer = new byte[256];
-			int bCount;
+		public void run() {
+		    tLastTimePING = new Date().getTime();
+		    try {
+			syncWrite(new MessagePacket(tLastTimePING).bytes);
+		    } catch (IOException e) {
+			this.cancel();
+		    }
+		}
 
-			// Цикл прослушки
-			while (true)
-			{
-				try
-				{
-					bCount = tInStream.read(buffer);
-				}
-				catch (IOException e)
-				{
-					transferToast("Ошибка прослушки:" + e.getMessage());
+	    }, 5000, 5000);
+	};
 
-					this.goodbyeSocketClose();
-					return;
-				}
+	/** РўРµР»Рѕ ConnectionThread (РїСЂРѕСЃР»СѓС€РєР° BluetoothSocket). */
+	@Override
+	public void run() {
+	    // TODO: Р Р°Р·РјРµСЂ, РєРѕРЅРµС‡РЅРѕ, РїРѕРґ РІРѕРїСЂРѕСЃРѕРј...
+	    final byte[] buffer = new byte[256];
+	    int bCount;
 
-				byte[] bPacket = Arrays.copyOfRange(buffer, 0, bCount);
+	    // Р¦РёРєР» РїСЂРѕСЃР»СѓС€РєРё
+	    while (true) {
+		try {
+		    bCount = tInStream.read(buffer);
+		} catch (IOException e) {
+		    transferToast("РћС€РёР±РєР° РїСЂРѕСЃР»СѓС€РєРё:" + e.getMessage());
 
-				// Пакет придуманного прикладного протокола
-				final MessagePacket packet = new MessagePacket(bPacket);
+		    this.goodbyeSocketClose();
+		    return;
+		}
 
-				if (!packet.checkHash())
-				{
-					transferToast("Ошибка: полученное сообщение повреждено!");
-					continue;
-				}
+		byte[] bPacket = Arrays.copyOfRange(buffer, 0, bCount);
 
-				switch (packet.code)
-				{
-				case __PING:
-				{
-					try
-					{
-						syncWrite(new MessagePacket(packet.message).bytes);
-					}
-					catch (IOException e)
-					{
-						transferToast("Ошибка отправки PONG: " + e.getMessage());
-					}
-					break;
-				}
-				case __PONG:
-				{
-					long time = Long.parseLong(packet.message, Character.MAX_RADIX);
-					if (time == tLastTimePING)
-					{
-						transferToast("PING: " + (new Date().getTime() - tLastTimePING) + " ms");
-					}
-					else
-					{
-						transferToast("Неожиданный PONG!");
-					}
-					break;
-				}
-				case __TEXT:
-				{
-					// Сразу нужно отправить подтверждение в любом случае
-					try
-					{
-						syncWrite(new MessagePacket(MessageCode.__CONFIRMATION, packet.id).bytes);
-					}
-					catch (IOException e)
-					{
-						transferToast("Ошибка отправки подтверждения: " + e.getMessage());
-					}
+		// РџР°РєРµС‚ РїСЂРёРґСѓРјР°РЅРЅРѕРіРѕ РїСЂРёРєР»Р°РґРЅРѕРіРѕ РїСЂРѕС‚РѕРєРѕР»Р°
+		final MessagePacket packet = new MessagePacket(bPacket);
 
-					// TODO: вообще теоретически последовательность должна
-					// быть непрерывна, за исключением случая, когда клиент
-					// подключается к серверу, на котором до этого
-					// происходил обмен сообщениями
+		if (!packet.checkHash()) {
+		    transferToast("РћС€РёР±РєР°: РїРѕР»СѓС‡РµРЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РїРѕРІСЂРµР¶РґРµРЅРѕ!");
+		    continue;
+		}
 
-					final int lastInputMsgID = aLastInputMsgNumberMap.get(packet.getSenderAddressString());
-					if (packet.id <= lastInputMsgID)
-					{
-						transferToast("Ошибка: получен дубликат сообщения!");
-						continue;
-					}
-					else if (packet.id > lastInputMsgID + 1)
-					{
-						transferToast("Предупреждение: пропуск в последовательности сообщений!");
-					}
-					transferResponseToUIThread(GUIRequestCode._MESSAGE, packet.message);
+		switch (packet.code) {
+		case __PING: {
+		    try {
+			syncWrite(new MessagePacket(packet.message).bytes);
+		    } catch (IOException e) {
+			transferToast("РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё PONG: " + e.getMessage());
+		    }
+		    break;
+		}
+		case __PONG: {
+		    long time = Long.parseLong(packet.message, Character.MAX_RADIX);
+		    if (time == tLastTimePING) {
+			transferToast("PING: " + (new Date().getTime() - tLastTimePING) + " ms");
+		    } else {
+			transferToast("РќРµРѕР¶РёРґР°РЅРЅС‹Р№ PONG!");
+		    }
+		    break;
+		}
+		case __TEXT: {
+		    // РЎСЂР°Р·Сѓ РЅСѓР¶РЅРѕ РѕС‚РїСЂР°РІРёС‚СЊ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РІ Р»СЋР±РѕРј СЃР»СѓС‡Р°Рµ
+		    try {
+			syncWrite(new MessagePacket(MessageCode.__CONFIRMATION, packet.id).bytes);
+		    } catch (IOException e) {
+			transferToast("РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ: " + e.getMessage());
+		    }
 
-					// Отправить всем подключениям, кроме отправителя
-					broadcasting(this, packet);
-					aLastInputMsgNumberMap.put(packet.getSenderAddressString(), packet.id);
-					break;
-				}
-				case __CONFIRMATION:
-				{
-					syncCheckIncomingConfirmation(packet);
-					break;
-				}
-				case __HELLO:
-				{
-					transferToast("Пришёл HELLO!");
-					syncIncomingHello(packet);
-					broadcasting(this, packet);
+		    // TODO: РІРѕРѕР±С‰Рµ С‚РµРѕСЂРµС‚РёС‡РµСЃРєРё РїРѕСЃР»РµРґРѕРІР°С‚РµР»СЊРЅРѕСЃС‚СЊ РґРѕР»Р¶РЅР°
+		    // Р±С‹С‚СЊ РЅРµРїСЂРµСЂС‹РІРЅР°, Р·Р° РёСЃРєР»СЋС‡РµРЅРёРµРј СЃР»СѓС‡Р°СЏ, РєРѕРіРґР° РєР»РёРµРЅС‚
+		    // РїРѕРґРєР»СЋС‡Р°РµС‚СЃСЏ Рє СЃРµСЂРІРµСЂСѓ, РЅР° РєРѕС‚РѕСЂРѕРј РґРѕ СЌС‚РѕРіРѕ
+		    // РїСЂРѕРёСЃС…РѕРґРёР» РѕР±РјРµРЅ СЃРѕРѕР±С‰РµРЅРёСЏРјРё
 
-					break;
-				}
-				case __GOODBYE:
-				{
-					transferToast("Пришёл GOODBYE!");
-					syncIncomingGoodbye(packet);
-					broadcasting(this, packet);
+		    final int lastInputMsgID = aLastInputMsgNumberMap.get(packet.getSenderAddressString());
+		    if (packet.id <= lastInputMsgID) {
+			transferToast("РћС€РёР±РєР°: РїРѕР»СѓС‡РµРЅ РґСѓР±Р»РёРєР°С‚ СЃРѕРѕР±С‰РµРЅРёСЏ!");
+			continue;
+		    } else if (packet.id > lastInputMsgID + 1) {
+			transferToast("РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ: РїСЂРѕРїСѓСЃРє РІ РїРѕСЃР»РµРґРѕРІР°С‚РµР»СЊРЅРѕСЃС‚Рё СЃРѕРѕР±С‰РµРЅРёР№!");
+		    }
+		    transferResponseToUIThread(GUIRequestCode._MESSAGE, packet.message);
 
-					break;
-				}
-				default:
-					transferToast("Ошибка: неопределённый тип сообщения!");
-					break;
-				}
+		    // РћС‚РїСЂР°РІРёС‚СЊ РІСЃРµРј РїРѕРґРєР»СЋС‡РµРЅРёСЏРј, РєСЂРѕРјРµ РѕС‚РїСЂР°РІРёС‚РµР»СЏ
+		    broadcasting(this, packet);
+		    aLastInputMsgNumberMap.put(packet.getSenderAddressString(), packet.id);
+		    break;
+		}
+		case __CONFIRMATION: {
+		    syncCheckIncomingConfirmation(packet);
+		    break;
+		}
+		case __HELLO: {
+		    transferToast("РџСЂРёС€С‘Р» HELLO!");
+		    syncIncomingHello(packet);
+		    broadcasting(this, packet);
+
+		    break;
+		}
+		case __GOODBYE: {
+		    transferToast("РџСЂРёС€С‘Р» GOODBYE!");
+		    syncIncomingGoodbye(packet);
+		    broadcasting(this, packet);
+
+		    break;
+		}
+		default:
+		    transferToast("РћС€РёР±РєР°: РЅРµРѕРїСЂРµРґРµР»С‘РЅРЅС‹Р№ С‚РёРї СЃРѕРѕР±С‰РµРЅРёСЏ!");
+		    break;
+		}
+	    }
+	    // РљРѕРЅРµС† Р±РµСЃРєРѕРЅРµС‡РЅРѕРіРѕ С†РёРєР»Р° РїСЂРѕСЃР»СѓС€РєРё
+	};
+
+	private void syncCheckIncomingConfirmation(MessagePacket packet) {
+	    synchronized (aConfirmationMap) {
+		if (aConfirmationMap.containsKey(this)) {
+		    boolean continueWaiting = false;
+		    boolean packetFound = false;
+		    for (MessagePacket mp : aConfirmationMap.get(this)) {
+			if (packet.id == mp.id) {
+			    aConfirmationMap.get(this).remove(mp);
+			    packetFound = true;
+			} else {
+			    continueWaiting = true;
 			}
-			// Конец бесконечного цикла прослушки
-		};
+		    }
 
-		private void syncCheckIncomingConfirmation(MessagePacket packet)
-		{
-			synchronized (aConfirmationMap)
-			{
-				if (aConfirmationMap.containsKey(this))
-				{
-					boolean continueWaiting = false;
-					boolean packetFound = false;
-					for (MessagePacket mp : aConfirmationMap.get(this))
-					{
-						if (packet.id == mp.id)
-						{
-							aConfirmationMap.get(this).remove(mp);
-							packetFound = true;
-						}
-						else
-						{
-							continueWaiting = true;
-						}
-					}
+		    if (!continueWaiting) {
+			transferResponseToUIThread(GUIRequestCode._UNBLOCK, null);
+		    }
 
-					if (!continueWaiting)
-					{
-						transferResponseToUIThread(GUIRequestCode._UNBLOCK, null);
-					}
+		    if (!packetFound) {
+			transferToast("РћС€РёР±РєР°: Р»РѕР¶РЅС‹Р№ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РґРѕСЃС‚Р°РІРєРё!");
+		    }
+		} else {
+		    transferToast("РћС€РёР±РєР°: РЅРµРѕР¶РёРґР°РЅРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ Р»РѕР¶РЅРѕ РїРѕРґС‚РІРµСЂРґРёР»Рѕ РґРѕСЃС‚Р°РІРєСѓ!");
+		}
+	    }
+	};
 
-					if (!packetFound)
-					{
-						transferToast("Ошибка: ложный идентификатор подтверждения доставки!");
-					}
-				}
-				else
-				{
-					transferToast("Ошибка: неожиданное соединение ложно подтвердило доставку!");
-				}
-			}
-		};
+	private void syncIncomingHello(MessagePacket pack) {
+	    final String senderAddress = pack.getSenderAddressString();
+	    synchronized (aLastInputMsgNumberMap) {
+		if (aLastInputMsgNumberMap.containsKey(senderAddress))
+		    transferToast("РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ: РїРѕР»СѓС‡РµРЅ РїРѕРІС‚РѕСЂРЅС‹Р№ HELLO!");
+		aLastInputMsgNumberMap.put(pack.getSenderAddressString(), pack.id);
+	    }
+	};
 
-		private final void syncIncomingHello(MessagePacket pack)
-		{
-			final String senderAddress = pack.getSenderAddressString();
-			synchronized (aLastInputMsgNumberMap)
-			{
-				if (aLastInputMsgNumberMap.containsKey(senderAddress))
-					transferToast("Предупреждение: получен повторный HELLO!");
-				aLastInputMsgNumberMap.put(pack.getSenderAddressString(), pack.id);
-			}
-		};
+	private void syncIncomingGoodbye(MessagePacket pack) {
+	    final String senderAddress = pack.getSenderAddressString();
+	    synchronized (aLastInputMsgNumberMap) {
+		if (aLastInputMsgNumberMap.containsKey(senderAddress))
+		    aLastInputMsgNumberMap.remove(senderAddress);
+		else
+		    transferToast("РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ: GOODBYE РїСЂРёСЃР»Р°Р» РЅРµР·РЅР°РєРѕРјРµС†!");
+	    }
+	};
 
-		private final void syncIncomingGoodbye(MessagePacket pack)
-		{
-			final String senderAddress = pack.getSenderAddressString();
-			synchronized (aLastInputMsgNumberMap)
-			{
-				if (aLastInputMsgNumberMap.containsKey(senderAddress))
-					aLastInputMsgNumberMap.remove(senderAddress);
-				else
-					transferToast("Предупреждение: GOODBYE прислал незнакомец!");
-			}
-		};
+	/** Р Р°СЃС€РёСЂРµРЅРёРµ С„СѓРЅРєС†РёРё, СѓС‡РёС‚С‹РІР°СЋС‰РµРµ СЂРµР°Р»РёР·Р°С†РёСЋ РїСЂРѕС‚РѕРєРѕР»Р° РѕР±РјРµРЅР°. */
+	protected void goodbyeSocketClose() {
+	    try {
+		syncWrite(new MessagePacket(MessageCode.__GOODBYE, ++aLastOutputMsgNumber).bytes);
+	    } catch (IOException e) {
+		transferToast("РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё GOODBYE РїСЂРё Р·Р°РІРµСЂС€РµРЅРёРё SocketThread: " + e.getMessage());
+	    }
 
-		/** Расширение функции, учитывающее реализацию протокола обмена. */
-		protected void goodbyeSocketClose()
-		{
-			try
-			{
-				syncWrite(new MessagePacket(MessageCode.__GOODBYE, ++aLastOutputMsgNumber).bytes);
-			}
-			catch (IOException e)
-			{
-				transferToast("Ошибка отправки GOODBYE при завершении SocketThread: " + e.getMessage());
-			}
+	    try {
+		super.close();
+		transferToast("Thread РїРµСЂРµРґР°С‡Рё РґР°РЅРЅС‹С… СѓСЃРїРµС€РЅРѕ РѕСЃС‚Р°РЅРѕРІР»РµРЅ!");
+	    } catch (IOException e) {
+		transferToast("РћС€РёР±РєР° SocketThread.close(): " + e.getMessage());
+	    }
 
-			try
-			{
-				super.close();
-				transferToast("Thread передачи данных успешно остановлен!");
-			}
-			catch (IOException e)
-			{
-				transferToast("Ошибка SocketThread.close(): " + e.getMessage());
-			}
+	    // РџСЂРѕСЃР»СѓС€РєР° РѕСЃС‚Р°РЅРѕРІР»РµРЅР°: СѓРґР°Р»РёС‚СЊ СЌС‚Рѕ РїРѕРґРєР»СЋС‡РµРЅРёРµ РёР· СЃРїРёСЃРєРѕРІ
+	    syncRemoveConnectedClient(this);
 
-			// Прослушка остановлена: удалить это подключение из списков
-			syncRemoveConnectedClient(this);
-			
-			transferCut(this);
-		};
+	    transferCut(this);
+	};
 
+    }
+
+    /** РњРµС‚РѕРґ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅРЅРѕРіРѕ РґРѕР±Р°РІР»РµРЅРёСЏ СЌР»РµРјРµРЅС‚Р° РІ СЃРїРёСЃРєРј РїРѕРґРєР»СЋС‡РµРЅРёР№. */
+    protected void syncAddConnectionSocket(BluetoothSocket socket) throws IOException {
+	// TODO: РІРѕР·РјРѕР¶РЅРѕ СЃС‚РѕРёС‚ РїРѕРґРїРёСЃС‹РІР°С‚СЊ РїРѕС‚РѕРєРё РјРµС‚РѕРґРѕРј setName()? РќР°РїСЂРёРјРµСЂ РІ
+	// РЅС‘Рј РјРѕР¶РЅРѕ С…СЂР°РЅРёС‚СЊ РёРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ-РѕС‚РїСЂР°РІРёС‚РµР»СЏ.
+	final ConnectionThread thread = new ConnectionThread(socket);
+
+	synchronized (aConnectionThread) {
+	    aConnectionThread.add(thread);
 	}
 
-	/** Метод синхронизированного добавления элемента в спискм подключений. */
-	protected final void syncAddConnectionSocket(BluetoothSocket socket) throws IOException
-	{
-		// TODO: возможно стоит подписывать потоки методом setName()? Например в
-		// нём можно хранить имя пользователя-отправителя.
-		final ConnectionThread thread = new ConnectionThread(socket);
-
-		synchronized (aConnectionThread)
-		{
-			aConnectionThread.add(thread);
-		}
-
-		synchronized (aConfirmationMap)
-		{
-			aConfirmationMap.put(thread, new ArrayList<MessagePacket>());
-		}
-
-		thread.setDaemon(true);
-		thread.start();
-	};
-
-	/** Метод синхронизированного удаления клиентов из списков сервера. */
-	private final void syncRemoveConnectedClient(SocketThread targetThread)
-	{
-		synchronized (aConnectionThread)
-		{
-			aConnectionThread.remove(targetThread);
-		}
-
-		synchronized (aConfirmationMap)
-		{
-			if (aConfirmationMap.containsKey(targetThread))
-			{
-				aConfirmationMap.remove(targetThread);
-				if (aConfirmationMap.isEmpty())
-					transferResponseToUIThread(GUIRequestCode._LONELINESS, null);
-
-				boolean confirmationEmpty = true;
-				for (ArrayList<MessagePacket> waitedPacketsConfirm : aConfirmationMap.values())
-				{
-					// Если есть другие ожидаемые подтверждения доставки
-					if (!waitedPacketsConfirm.isEmpty())
-					{
-						confirmationEmpty = false;
-						break;
-					}
-				}
-				// Если нет ожидаемых подтверждений доставки
-				if (confirmationEmpty == true)
-					transferResponseToUIThread(GUIRequestCode._UNBLOCK, null);
-			}
-		}
-	};
-
-	// Блок взаимодействия с GUI.
-	/** Messenger взаимодействия с GUI. */
-	protected volatile Messenger aMessenger;
-
-	// TODO: Нужно ли его синхронизировать по aMessenger?
-	/** Отправка запроса обработчику Messenger'а в Thread'е UI. */
-	protected final void transferResponseToUIThread(GUIRequestCode code, String str)
-	{
-		if (aMessenger != null)
-		{
-			synchronized (aMessenger)
-			{
-				try
-				{
-					Message msg = Message.obtain(null, code.getId(), 0, 0);
-					msg.obj = str;
-					aMessenger.send(msg);
-				}
-				catch (RemoteException e)
-				{
-					// TODO: пока нет извещений об исключениях Messenger'а
-				}
-			}
-		}
-		else
-		{
-			// TODO: пока нет извещений об исключениях Messenger'а
-		}
-	};
-
-	protected final void transferCut(Thread thread)
-	{
-		if (aMessenger != null)
-		{
-			synchronized (aMessenger)
-			{
-				try
-				{
-					Message msg = Message.obtain(null, GUIRequestCode._CUT.getId(), 0, 0);
-					msg.obj = thread;
-					aMessenger.send(msg);
-				}
-				catch (RemoteException e)
-				{
-					// TODO: пока нет извещений об исключениях Messenger'а
-				}
-			}
-		}
-		else
-		{
-			// TODO: пока нет извещений об исключениях Messenger'а
-		}
-	}
-	
-	
-	/** Формирование запроса на вывод Toast в Thread'е UI. */
-	protected final void transferToast(String str)
-	{
-		transferResponseToUIThread(GUIRequestCode._TOAST, "st: " + str);
-	};
-
-	/** Обновляет Messanger связи с UI. Возвращает false, если аргумент null. */
-	public boolean updateMessanger(Messenger selectedMessenger)
-	{
-		if (selectedMessenger != null)
-		{
-			aMessenger = selectedMessenger;
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	};
-
-	/** Инициализирует новый Timer. */
-	public boolean startConnection(Messenger selectedMessenger)
-	{
-		if (updateMessanger(selectedMessenger))
-		{
-			aConfirmationTimer = new Timer();
-			return true;
-		}
-		else
-		{
-			return false;
-		}
+	synchronized (aConfirmationMap) {
+	    aConfirmationMap.put(thread, new ArrayList<MessagePacket>());
 	}
 
-	// TODO: сейчас вызывается финальным уничтожением Fragment'a подключения
-	public void stopConnection()
-	{
-		Toast.makeText(getBaseContext(), "closeChatClient()!", Toast.LENGTH_SHORT).show();
+	thread.setDaemon(true);
+	thread.start();
+    };
 
-		for (ConnectionThread thread : aConnectionThread)
-			thread.goodbyeSocketClose();
+    /** РњРµС‚РѕРґ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅРЅРѕРіРѕ СѓРґР°Р»РµРЅРёСЏ РєР»РёРµРЅС‚РѕРІ РёР· СЃРїРёСЃРєРѕРІ СЃРµСЂРІРµСЂР°. */
+    private void syncRemoveConnectedClient(SocketThread targetThread) {
+	synchronized (aConnectionThread) {
+	    aConnectionThread.remove(targetThread);
+	}
 
-		// После этого Timer не пригоден для планировки!
-		aConfirmationTimer.cancel();
+	synchronized (aConfirmationMap) {
+	    if (aConfirmationMap.containsKey(targetThread)) {
+		aConfirmationMap.remove(targetThread);
+		if (aConfirmationMap.isEmpty())
+		    transferResponseToUIThread(GUIRequestCode._LONELINESS, null);
 
-		final int tasksCount = aConfirmationTimer.purge();
-		if (tasksCount > 0)
-			Toast.makeText(getBaseContext(), "Заданий таймера подтверждения удалено: " + tasksCount, Toast.LENGTH_LONG)
-					.show();
-		aConfirmationTimer = null;
-	};
+		boolean confirmationEmpty = true;
+		for (ArrayList<MessagePacket> waitedPacketsConfirm : aConfirmationMap.values()) {
+		    // Р•СЃР»Рё РµСЃС‚СЊ РґСЂСѓРіРёРµ РѕР¶РёРґР°РµРјС‹Рµ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РґРѕСЃС‚Р°РІРєРё
+		    if (!waitedPacketsConfirm.isEmpty()) {
+			confirmationEmpty = false;
+			break;
+		    }
+		}
+		// Р•СЃР»Рё РЅРµС‚ РѕР¶РёРґР°РµРјС‹С… РїРѕРґС‚РІРµСЂР¶РґРµРЅРёР№ РґРѕСЃС‚Р°РІРєРё
+		if (confirmationEmpty == true)
+		    transferResponseToUIThread(GUIRequestCode._UNBLOCK, null);
+	    }
+	}
+    };
+
+    // Р‘Р»РѕРє РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ GUI.    
+
+    // TODO: РќСѓР¶РЅРѕ Р»Рё РµРіРѕ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ РїРѕ aMessenger?
+    /** РћС‚РїСЂР°РІРєР° Р·Р°РїСЂРѕСЃР° РѕР±СЂР°Р±РѕС‚С‡РёРєСѓ Messenger'Р° РІ Thread'Рµ UI. */
+    protected void transferResponseToUIThread(GUIRequestCode code, String str) {
+	if (aMessenger != null) {
+	    synchronized (aMessenger) {
+		try {
+		    Message msg = Message.obtain(null, code.getId(), 0, 0);
+		    msg.obj = str;
+		    aMessenger.send(msg);
+		} catch (RemoteException e) {
+		    // TODO: РїРѕРєР° РЅРµС‚ РёР·РІРµС‰РµРЅРёР№ РѕР± РёСЃРєР»СЋС‡РµРЅРёСЏС… Messenger'Р°
+		}
+	    }
+	} else {
+	    // TODO: РїРѕРєР° РЅРµС‚ РёР·РІРµС‰РµРЅРёР№ РѕР± РёСЃРєР»СЋС‡РµРЅРёСЏС… Messenger'Р°
+	}
+    };
+
+    protected void transferCut(Thread thread) {
+	if (aMessenger != null) {
+	    synchronized (aMessenger) {
+		try {
+		    Message msg = Message.obtain(null, GUIRequestCode._CUT.getId(), 0, 0);
+		    msg.obj = thread;
+		    aMessenger.send(msg);
+		} catch (RemoteException e) {
+		    // TODO: РїРѕРєР° РЅРµС‚ РёР·РІРµС‰РµРЅРёР№ РѕР± РёСЃРєР»СЋС‡РµРЅРёСЏС… Messenger'Р°
+		}
+	    }
+	} else {
+	    // TODO: РїРѕРєР° РЅРµС‚ РёР·РІРµС‰РµРЅРёР№ РѕР± РёСЃРєР»СЋС‡РµРЅРёСЏС… Messenger'Р°
+	}
+    }
+
+    /** Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ Р·Р°РїСЂРѕСЃР° РЅР° РІС‹РІРѕРґ Toast РІ Thread'Рµ UI. */
+    protected void transferToast(String str) {
+	transferResponseToUIThread(GUIRequestCode._TOAST, "st: " + str);
+    };
+
+    /** РћР±РЅРѕРІР»СЏРµС‚ Messanger СЃРІСЏР·Рё СЃ UI. Р’РѕР·РІСЂР°С‰Р°РµС‚ false, РµСЃР»Рё Р°СЂРіСѓРјРµРЅС‚ null. */
+    public boolean updateMessanger(Messenger selectedMessenger) {
+	if (selectedMessenger != null) {
+	    aMessenger = selectedMessenger;
+	    return true;
+	} else {
+	    return false;
+	}
+    };
+
+    /** РРЅРёС†РёР°Р»РёР·РёСЂСѓРµС‚ РЅРѕРІС‹Р№ Timer. */
+    public boolean startConnection(Messenger selectedMessenger) {
+	if (updateMessanger(selectedMessenger)) {
+	    aConfirmationTimer = new Timer();
+	    return true;
+	} else {
+	    return false;
+	}
+    }
+
+    // TODO: СЃРµР№С‡Р°СЃ РІС‹Р·С‹РІР°РµС‚СЃСЏ С„РёРЅР°Р»СЊРЅС‹Рј СѓРЅРёС‡С‚РѕР¶РµРЅРёРµРј Fragment'a РїРѕРґРєР»СЋС‡РµРЅРёСЏ
+    public void stopConnection() {
+	Toast.makeText(getBaseContext(), "closeChatClient()!", Toast.LENGTH_SHORT).show();
+
+	for (ConnectionThread thread : aConnectionThread)
+	    thread.goodbyeSocketClose();
+
+	// РџРѕСЃР»Рµ СЌС‚РѕРіРѕ Timer РЅРµ РїСЂРёРіРѕРґРµРЅ РґР»СЏ РїР»Р°РЅРёСЂРѕРІРєРё!
+	aConfirmationTimer.cancel();
+
+	final int tasksCount = aConfirmationTimer.purge();
+	if (tasksCount > 0)
+	    Toast.makeText(getBaseContext(), "Р—Р°РґР°РЅРёР№ С‚Р°Р№РјРµСЂР° РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ СѓРґР°Р»РµРЅРѕ: " + tasksCount, Toast.LENGTH_LONG)
+		    .show();
+	aConfirmationTimer = null;
+    };
 }

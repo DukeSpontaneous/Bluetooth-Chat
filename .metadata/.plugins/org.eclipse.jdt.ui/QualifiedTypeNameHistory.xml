@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-<fullyQualifiedTypeName name="java.util.Set"/>
-<fullyQualifiedTypeName name="android.widget.ArrayAdapter"/>
-<fullyQualifiedTypeName name="android.widget.Toast"/>
 <fullyQualifiedTypeName name="android.util.Log"/>
 <fullyQualifiedTypeName name="java.lang.Thread"/>
 <fullyQualifiedTypeName name="android.R.string"/>
@@ -57,7 +54,10 @@
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.IChatClient"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ConnectionFragment"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.ApplicationMode"/>
-<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.ChatService"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.R"/>
 <fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.GUIRequestCode"/>
+<fullyQualifiedTypeName name="java.util.ServiceConfigurationError"/>
+<fullyQualifiedTypeName name="android.content.ServiceConnection"/>
+<fullyQualifiedTypeName name="by.spontaneous.bluetoothchat.Services.ChatService"/>
+<fullyQualifiedTypeName name="android.os.Binder"/>
 </qualifiedTypeNameHistroy>

@@ -1,4 +1,4 @@
-package by.spontaneous.bluetoothchat.Services;
+п»їpackage by.spontaneous.bluetoothchat.Services;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -6,190 +6,166 @@ import java.util.Arrays;
 import android.bluetooth.BluetoothAdapter;
 
 /**
- * Класс пакета сообщения, реализующий его формирование из отдельных компонентов
- * и проверку сформированного пакета на валидность.
+ * РљР»Р°СЃСЃ РїР°РєРµС‚Р° СЃРѕРѕР±С‰РµРЅРёСЏ, СЂРµР°Р»РёР·СѓСЋС‰РёР№ РµРіРѕ С„РѕСЂРјРёСЂРѕРІР°РЅРёРµ РёР· РѕС‚РґРµР»СЊРЅС‹С… РєРѕРјРїРѕРЅРµРЅС‚РѕРІ
+ * Рё РїСЂРѕРІРµСЂРєСѓ СЃС„РѕСЂРјРёСЂРѕРІР°РЅРЅРѕРіРѕ РїР°РєРµС‚Р° РЅР° РІР°Р»РёРґРЅРѕСЃС‚СЊ.
  */
-final class MessagePacket
-{
-	private final static byte[] MY_BT_MAC_ADDRESS = getMyAddressBytes();
+class MessagePacket {
+    private final static byte[] MY_BT_MAC_ADDRESS = getMyAddressBytes();
 
-	/** Возвращает mac-адрес Default BluetoothAdapter'а. */
-	private final static byte[] getMyAddressBytes()
-	{
-		final String[] macAddressParts = BluetoothAdapter.getDefaultAdapter().getAddress().split(":");
-		final byte[] macAddressBytes = new byte[macAddressParts.length];
+    /** Р’РѕР·РІСЂР°С‰Р°РµС‚ mac-Р°РґСЂРµСЃ Default BluetoothAdapter'Р°. */
+    private static byte[] getMyAddressBytes() {
+	final String[] macAddressParts = BluetoothAdapter.getDefaultAdapter().getAddress().split(":");
+	final byte[] macAddressBytes = new byte[macAddressParts.length];
 
-		// Парсинг 16-ричного текстового представления
-		for (int i = 0; i < macAddressParts.length; ++i)
-		{
-			Integer hex = Integer.parseInt(macAddressParts[i], 16);
-			macAddressBytes[i] = hex.byteValue();
-		}
+	// РџР°СЂСЃРёРЅРі 16-СЂРёС‡РЅРѕРіРѕ С‚РµРєСЃС‚РѕРІРѕРіРѕ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёСЏ
+	for (int i = 0; i < macAddressParts.length; ++i) {
+	    Integer hex = Integer.parseInt(macAddressParts[i], 16);
+	    macAddressBytes[i] = hex.byteValue();
+	}
 
-		return macAddressBytes;
-	};
+	return macAddressBytes;
+    };
 
-	/** Возвращает byte[] представление адреса отправителя. */
-	private final static byte[] getSenderAddressBytes(String strAddress)
-	{
-		final String[] macAddressParts = strAddress.split(":");
-		final byte[] macAddressBytes = new byte[macAddressParts.length];
+    /** Р’РѕР·РІСЂР°С‰Р°РµС‚ byte[] РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ Р°РґСЂРµСЃР° РѕС‚РїСЂР°РІРёС‚РµР»СЏ. */
+    private static byte[] getSenderAddressBytes(String strAddress) {
+	final String[] macAddressParts = strAddress.split(":");
+	final byte[] macAddressBytes = new byte[macAddressParts.length];
 
-		// Парсинг 16-ричного текстового представления
-		for (int i = 0; i < macAddressParts.length; ++i)
-		{
-			Integer hex = Integer.parseInt(macAddressParts[i], 16);
-			macAddressBytes[i] = hex.byteValue();
-		}
+	// РџР°СЂСЃРёРЅРі 16-СЂРёС‡РЅРѕРіРѕ С‚РµРєСЃС‚РѕРІРѕРіРѕ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёСЏ
+	for (int i = 0; i < macAddressParts.length; ++i) {
+	    Integer hex = Integer.parseInt(macAddressParts[i], 16);
+	    macAddressBytes[i] = hex.byteValue();
+	}
 
-		return macAddressBytes;
-	};
+	return macAddressBytes;
+    };
 
-	public final byte[] bytes;
+    public final byte[] bytes;
 
-	public final int hash;
-	public final byte[] address;
-	public final int id;
-	public final MessageCode code;
-	public final String message;
+    public final int hash;
+    public final byte[] address;
+    public final int id;
+    public final MessageCode code;
+    public final String message;
 
-	/** Конструктор пакета сообщения из массива байтов на фазе прибытия. */
-	public MessagePacket(byte[] inBytes)
-	{
-		bytes = inBytes;
+    /** РљРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїР°РєРµС‚Р° СЃРѕРѕР±С‰РµРЅРёСЏ РёР· РјР°СЃСЃРёРІР° Р±Р°Р№С‚РѕРІ РЅР° С„Р°Р·Рµ РїСЂРёР±С‹С‚РёСЏ. */
+    public MessagePacket(byte[] inBytes) {
+	bytes = inBytes;
 
-		if (inBytes.length > 4 + 6 + 4)
-		{
-			hash = ByteBuffer.wrap(inBytes, 0, 4).getInt();
-			address = Arrays.copyOfRange(inBytes, 4, 4 + 6);
-			id = ByteBuffer.wrap(inBytes, 4 + 6, 4).getInt();
-			code = MessageCode.fromId(inBytes[4 + 6 + 4]);
+	if (inBytes.length > 4 + 6 + 4) {
+	    hash = ByteBuffer.wrap(inBytes, 0, 4).getInt();
+	    address = Arrays.copyOfRange(inBytes, 4, 4 + 6);
+	    id = ByteBuffer.wrap(inBytes, 4 + 6, 4).getInt();
+	    code = MessageCode.fromId(inBytes[4 + 6 + 4]);
 
-			if (inBytes.length > 4 + 6 + 4 + 1)
-				message = new String(Arrays.copyOfRange(inBytes, 4 + 6 + 4 + 1, inBytes.length));
-			else
-				message = null;
-		}
+	    if (inBytes.length > 4 + 6 + 4 + 1)
+		message = new String(Arrays.copyOfRange(inBytes, 4 + 6 + 4 + 1, inBytes.length));
+	    else
+		message = null;
+	} else {
+	    hash = 0;
+	    address = null;
+	    id = 0;
+	    code = MessageCode.__UNKNOWN;
+	    message = null;
+	}
+    };
+
+    /** РЎСѓРїРµСЂ-РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ, РёРЅРёС†РёР°Р»РёР·РёСЂСѓСЋС‰РёР№ РїСЂРѕРёР·РІРѕР»СЊРЅС‹Р№ РЅР°Р±РѕСЂ РїР°СЂР°РјРµС‚СЂРѕРІ. */
+    private MessagePacket(byte[] inAddress, MessageCode inCode, int inId, String inMessage) {
+	address = inAddress;
+	id = inId;
+	code = inCode;
+	message = inMessage;
+
+	byte[] bBuf = getBodyBytes();
+
+	hash = Arrays.hashCode(bBuf);
+
+	final byte[] bHash = ByteBuffer.allocate(4).putInt(hash).array();
+
+	bytes = new byte[bHash.length + bBuf.length];
+
+	System.arraycopy(bHash, 0, bytes, 0, bHash.length);
+	System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
+    };
+
+    /** Р­РєСЃРїСЂРµСЃСЃ-РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїР°РєРµС‚Р°-Р·Р°РїСЂРѕСЃР°. */
+    public MessagePacket(MessageCode inCode) {
+	this(MY_BT_MAC_ADDRESS, inCode, 0, null);
+    };
+
+    /** Р­РєСЃРїСЂРµСЃСЃ-РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РЅСѓРјРµСЂРѕРІР°РЅРЅРѕРіРѕ РїР°РєРµС‚Р°-Р·Р°РїСЂРѕСЃР°. */
+    public MessagePacket(MessageCode inCode, int inId) {
+	this(MY_BT_MAC_ADDRESS, inCode, inId, null);
+    };
+
+    /** Р­РєСЃРїСЂРµСЃСЃ-РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїР°РєРµС‚Р°-СЃРѕРѕР±С‰РµРЅРёСЏ. */
+    public MessagePacket(MessageCode inCode, int inId, String inMessage) {
+	this(MY_BT_MAC_ADDRESS, inCode, inId, inMessage);
+    };
+
+    /** Р­РєСЃРїСЂРµСЃСЃ-РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ СЃСѓСЂСЂРѕРіР°С‚РЅС‹С… HELLO-РїР°РєРµС‚РѕРІ СЃРµСЂРІРµСЂР°. */
+    public MessagePacket(String inAddress, int inId) {
+	this(getSenderAddressBytes(inAddress), MessageCode.__HELLO, inId, null);
+    };
+
+    /** Р­РєСЃРїСЂРµСЃСЃ-РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ PING-РїР°РєРµС‚РѕРІ. */
+    public MessagePacket(long time) {
+	this(MY_BT_MAC_ADDRESS, MessageCode.__PING, 0, Long.toString(time, Character.MAX_RADIX));
+    };
+
+    /** Р­РєСЃРїСЂРµСЃСЃ-РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ PONG-РїР°РєРµС‚РѕРІ. */
+    public MessagePacket(String time) {
+	this(MY_BT_MAC_ADDRESS, MessageCode.__PONG, 0, time);
+    };
+
+    /**
+     * РџСЂРѕРІРµСЂРєР° СЃРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ РїРѕР»СЏ Hash code С„Р°РєС‚РёС‡РµСЃРєРѕРјСѓ Hash code
+     * СЃРѕРѕР±С‰РµРЅРёСЏ, СЃ С†РµР»СЊСЋ СѓР±РµРґРёС‚СЊ РІ С‚РѕРј, С‡С‚Рѕ РІС…РѕРґСЏС‰РёР№ РїР°РєРµС‚ РЅРµ Р±С‹Р» РїРѕРІСЂРµР¶РґС‘РЅ.
+     */
+    public boolean checkHash() {
+	if (bytes.length > 4 + 6 + 4) {
+	    final byte[] bBuf = Arrays.copyOfRange(bytes, 4, bytes.length);
+	    return (Arrays.hashCode(bBuf) == hash);
+	} else {
+	    return false;
+	}
+    };
+
+    /** Р’РѕР·РІСЂР°С‰Р°РµС‚ byte[]-С‚РµР»Рѕ РїР°РєРµС‚Р°, РїРѕ РєРѕС‚РѕСЂРѕРјСѓ РІС‹С‡РёСЃР»СЏРµС‚СЃСЏ Hash. */
+    private byte[] getBodyBytes() {
+	final byte[] bAddr = address != null ? address : new byte[0];
+	final byte[] bId = ByteBuffer.allocate(4).putInt(id).array();
+	final byte[] bMsg = message != null ? message.getBytes() : new byte[0];
+	final byte[] bBuf = new byte[bAddr.length + bId.length + 1 + bMsg.length];
+
+	// Р’С‹С‡РёСЃР»РµРЅРёРµ hash code РґР»СЏ РІСЃРµС… РґР°РЅРЅС‹С… РїР°РєРµС‚Р°, СЃР»РµРґСѓСЋС‰РёС… Р·Р° 4-С‹Рј Р±Р°Р№С‚РѕРј
+	// (Р·Р° С‡РµС‚С‹СЂСЊРјСЏ Р±Р°Р№С‚Р°РјРё hash code)
+	System.arraycopy(bAddr, 0, bBuf, 0, bAddr.length);
+	System.arraycopy(bId, 0, bBuf, bAddr.length, bId.length);
+	bBuf[bAddr.length + bId.length] = code.getId();
+	System.arraycopy(bMsg, 0, bBuf, bAddr.length + bId.length + 1, bMsg.length);
+
+	return bBuf;
+    };
+
+    /** Р’РѕР·РІСЂР°С‰Р°РµС‚ String РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ Р°РґСЂРµСЃР° РѕС‚РїСЂР°РІРёС‚РµР»СЏ. */
+    public String getSenderAddressString() {
+	StringBuilder hex = new StringBuilder();
+
+	if (address != null) {
+	    for (int i = 0;;) {
+		hex.append(Integer.toString(address[i] & 0xF0 >> 4, 16));
+		hex.append(Integer.toString(address[i] & 0x0F, 16));
+
+		if (++i < address.length)
+		    hex.append(':');
 		else
-		{
-			hash = 0;
-			address = null;
-			id = 0;
-			code = MessageCode.__UNKNOWN;
-			message = null;
-		}
-	};
+		    break;
+	    }
+	}
 
-	/** Супер-конструктор, инициализирующий произвольный набор параметров. */
-	private MessagePacket(byte[] inAddress, MessageCode inCode, int inId, String inMessage)
-	{
-		address = inAddress;
-		id = inId;
-		code = inCode;
-		message = inMessage;
-
-		byte[] bBuf = getBodyBytes();
-
-		hash = Arrays.hashCode(bBuf);
-
-		final byte[] bHash = ByteBuffer.allocate(4).putInt(hash).array();
-
-		bytes = new byte[bHash.length + bBuf.length];
-
-		System.arraycopy(bHash, 0, bytes, 0, bHash.length);
-		System.arraycopy(bBuf, 0, bytes, bHash.length, bBuf.length);
-	};
-
-	/** Экспресс-конструктор пакета-запроса. */
-	public MessagePacket(MessageCode inCode)
-	{
-		this(MY_BT_MAC_ADDRESS, inCode, 0, null);
-	};
-
-	/** Экспресс-конструктор нумерованного пакета-запроса. */
-	public MessagePacket(MessageCode inCode, int inId)
-	{
-		this(MY_BT_MAC_ADDRESS, inCode, inId, null);
-	};
-
-	/** Экспресс-конструктор пакета-сообщения. */
-	public MessagePacket(MessageCode inCode, int inId, String inMessage)
-	{
-		this(MY_BT_MAC_ADDRESS, inCode, inId, inMessage);
-	};
-
-	/** Экспресс-конструктор суррогатных HELLO-пакетов сервера. */
-	public MessagePacket(String inAddress, int inId)
-	{
-		this(getSenderAddressBytes(inAddress), MessageCode.__HELLO, inId, null);
-	};
-
-	/** Экспресс-конструктор PING-пакетов. */
-	public MessagePacket(long time)
-	{
-		this(MY_BT_MAC_ADDRESS, MessageCode.__PING, 0, Long.toString(time, Character.MAX_RADIX));
-	};
-
-	/** Экспресс-конструктор PONG-пакетов. */
-	public MessagePacket(String time)
-	{
-		this(MY_BT_MAC_ADDRESS, MessageCode.__PONG, 0, time);
-	};
-
-	/**
-	 * Проверка соответствия значения поля Hash code фактическому Hash code
-	 * сообщения, с целью убедить в том, что входящий пакет не был повреждён.
-	 */
-	public final boolean checkHash()
-	{
-		if (bytes.length > 4 + 6 + 4)
-		{
-			final byte[] bBuf = Arrays.copyOfRange(bytes, 4, bytes.length);
-			return Arrays.hashCode(bBuf) == hash ? true : false;
-		}
-		else
-		{
-			return false;
-		}
-	};
-
-	/** Возвращает byte[]-тело пакета, по которому вычисляется Hash. */
-	private final byte[] getBodyBytes()
-	{
-		final byte[] bAddr = address != null ? address : new byte[0];
-		final byte[] bId = ByteBuffer.allocate(4).putInt(id).array();
-		final byte[] bMsg = message != null ? message.getBytes() : new byte[0];
-		final byte[] bBuf = new byte[bAddr.length + bId.length + 1 + bMsg.length];
-
-		// Вычисление hash code для всех данных пакета, следующих за 4-ым байтом
-		// (за четырьмя байтами hash code)
-		System.arraycopy(bAddr, 0, bBuf, 0, bAddr.length);
-		System.arraycopy(bId, 0, bBuf, bAddr.length, bId.length);
-		bBuf[bAddr.length + bId.length] = code.getId();
-		System.arraycopy(bMsg, 0, bBuf, bAddr.length + bId.length + 1, bMsg.length);
-
-		return bBuf;
-	};
-
-	/** Возвращает String представление адреса отправителя. */
-	public final String getSenderAddressString()
-	{
-		StringBuilder hex = new StringBuilder();
-
-		if (address != null)
-		{
-			for (int i = 0;;)
-			{
-				hex.append(Integer.toString(address[i] & 0xF0 >> 4, 16));
-				hex.append(Integer.toString(address[i] & 0x0F, 16));
-
-				if (++i < address.length)
-					hex.append(':');
-				else
-					break;
-			}
-		}
-
-		return hex.toString();
-	};
+	return hex.toString();
+    };
 }

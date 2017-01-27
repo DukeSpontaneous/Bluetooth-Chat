@@ -1,29 +1,28 @@
-package by.spontaneous.bluetoothchat.Services;
+п»їpackage by.spontaneous.bluetoothchat.Services;
 
 import android.os.Messenger;
 
 /**
- * Интерфейс взаимодействия с сервисами для ChatActivity, подразумевающий
- * возможность его серверной, или клиентской реализации.
+ * РРЅС‚РµСЂС„РµР№СЃ РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ СЃРµСЂРІРёСЃР°РјРё РґР»СЏ ChatActivity, РїРѕРґСЂР°Р·СѓРјРµРІР°СЋС‰РёР№
+ * РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ РµРіРѕ СЃРµСЂРІРµСЂРЅРѕР№, РёР»Рё РєР»РёРµРЅС‚СЃРєРѕР№ СЂРµР°Р»РёР·Р°С†РёРё.
  */
-public interface IChatClient
-{
-	/**
-	 * Интерфейс обновления Messenger'а связи с UI. Возвращает false, если
-	 * selectedMessenger == null.
-	 */
-	public boolean updateMessenger(Messenger selectedMessenger);
+public interface IChatClient {
+    /**
+     * РРЅС‚РµСЂС„РµР№СЃ РѕР±РЅРѕРІР»РµРЅРёСЏ Messenger'Р° СЃРІСЏР·Рё СЃ UI. Р’РѕР·РІСЂР°С‰Р°РµС‚ false, РµСЃР»Рё
+     * selectedMessenger == null.
+     */
+    public boolean updateMessenger(Messenger selectedMessenger);
 
-	/**
-	 * Интерфейс создания потока связи с приложением, запущенном в режиме
-	 * Server. Возврат false интерпретируется как необходимость закрыть
-	 * ChatActivity при попытке подключения к ChatClientService.
-	 */
-	public boolean startConnection(Messenger handler);
+    /**
+     * РРЅС‚РµСЂС„РµР№СЃ СЃРѕР·РґР°РЅРёСЏ РїРѕС‚РѕРєР° СЃРІСЏР·Рё СЃ РїСЂРёР»РѕР¶РµРЅРёРµРј, Р·Р°РїСѓС‰РµРЅРЅРѕРј РІ СЂРµР¶РёРјРµ
+     * Server. Р’РѕР·РІСЂР°С‚ false РёРЅС‚РµСЂРїСЂРµС‚РёСЂСѓРµС‚СЃСЏ РєР°Рє РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚СЊ Р·Р°РєСЂС‹С‚СЊ
+     * ChatActivity РїСЂРё РїРѕРїС‹С‚РєРµ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє ChatClientService.
+     */
+    public boolean startConnection(Messenger handler);
 
-	/** Интерфейс отправки сообщения из EditText (поле ввода в ChatActivity). */
-	public void sendResponse(String msg);
+    /** РРЅС‚РµСЂС„РµР№СЃ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ РёР· EditText (РїРѕР»Рµ РІРІРѕРґР° РІ ChatActivity). */
+    public void sendResponse(String msg);
 
-	/** Интерфейс реализации завершения работы ChatActivity. */
-	public void stopConnection();
+    /** РРЅС‚РµСЂС„РµР№СЃ СЂРµР°Р»РёР·Р°С†РёРё Р·Р°РІРµСЂС€РµРЅРёСЏ СЂР°Р±РѕС‚С‹ ChatActivity. */
+    public void stopConnection();
 }

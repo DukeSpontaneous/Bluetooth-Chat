@@ -8,6 +8,7 @@
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
+			<item value="? true : false"/>
 			<item value="asdd"/>
 			<item value="synchronized"/>
 			<item value="ConnectedThread"/>
@@ -15,7 +16,6 @@
 			<item value="chatClient"/>
 			<item value="IChat"/>
 			<item value="Toast"/>
-			<item value="// Toast.makeText(getThis(), item.getName() + &quot; выбран&quot;,"/>
 		</list>
 		<list key="replacehistory">
 		</list>

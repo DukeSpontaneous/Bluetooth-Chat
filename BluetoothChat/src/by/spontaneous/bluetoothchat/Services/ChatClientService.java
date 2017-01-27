@@ -1,4 +1,4 @@
-package by.spontaneous.bluetoothchat.Services;
+п»їpackage by.spontaneous.bluetoothchat.Services;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -12,100 +12,84 @@ import android.os.Messenger;
 import android.widget.Toast;
 import by.spontaneous.bluetoothchat.R;
 
-public final class ChatClientService extends ChatService
-{
-	public final class LocalBinder extends Binder
-	{
-		public final ChatClientService getService()
-		{
-			return ChatClientService.this;
-		}
-	};
+public class ChatClientService extends ChatService {
+    
+    /** Р’РЅРµС€РЅРёР№ С†РµР»РµРІРѕР№ BluetoothDevice-СЃРµСЂРІРµСЂ (null РґР»СЏ СЃР°РјРѕРіРѕ СЃРµСЂРІРµСЂР°). */
+    private BluetoothDevice mMasterDevice;
+    
+    private final IBinder mBinder = new LocalBinder();
+    
+    public class LocalBinder extends Binder {
+	public ChatClientService getService() {
+	    return ChatClientService.this;
+	}
+    };
 
-	private final IBinder mBinder = new LocalBinder();
+    @Override
+    public IBinder onBind(Intent intent) {
+	return mBinder;
+    };
 
-	@Override
-	public final IBinder onBind(Intent intent)
-	{
-		return mBinder;
-	};
+    @Override
+    public void onCreate() {
+	super.onCreate();
+	Toast.makeText(getBaseContext(), "ChatClientService onCreate()", Toast.LENGTH_SHORT).show();
+    };
 
-	@Override
-	public void onCreate()
-	{
-		super.onCreate();
-		Toast.makeText(getBaseContext(), "ChatClientService onCreate()", Toast.LENGTH_SHORT).show();
-	};
+    @Override
+    public void onDestroy() {
+	super.onDestroy();
+	Toast.makeText(getBaseContext(), "ChatClientService onDestroy()", Toast.LENGTH_SHORT).show();
+    };
 
-	@Override
-	public void onDestroy()
-	{
-		super.onDestroy();
-		Toast.makeText(getBaseContext(), "ChatClientService onDestroy()", Toast.LENGTH_SHORT).show();
-	};
+    public void setMasterDevice(BluetoothDevice mDevice) {
+	mMasterDevice = mDevice;
+    };
 
-	/** Внешний целевой BluetoothDevice-сервер (null для самого сервера). */
-	private BluetoothDevice mMasterDevice;
+    // Client-СЂРµР°Р»РёР·Р°С†РёСЏ IChatClient РґР»СЏ ChatActivity
+    /** РћР±РЅРѕРІР»СЏРµС‚ Messanger СЃРІСЏР·Рё СЃ UI. Р’РѕР·РІСЂР°С‰Р°РµС‚ false, РµСЃР»Рё Р°СЂРіСѓРјРµРЅС‚ null. */
+    @Override
+    public boolean updateMessenger(Messenger selectedMessenger) {
+	return super.updateMessanger(selectedMessenger);
+    };
 
-	public void setMasterDevice(BluetoothDevice mDevice)
-	{
-		mMasterDevice = mDevice;
-	};
+    /**
+     * Client-СЂРµР°Р»РёР·Р°С†РёСЏ РѕРґРЅРѕРіРѕ РёР· РјРµС‚РѕРґРѕРІ РёРЅС‚РµСЂС„РµР№СЃР° IChatClient, РѕС‚РІРµС‡Р°СЋС‰РµРіРѕ
+     * Р·Р° СЃРѕР·РґР°РЅРёРµ РїРѕС‚РѕРєР° СЃРІСЏР·Рё СЃ РїСЂРёР»РѕР¶РµРЅРёРµРј, Р·Р°РїСѓС‰РµРЅРЅРѕРј РІ СЂРµР¶РёРјРµ Server.
+     * Р’РѕР·РІСЂР°С‚ false Р·Р°РєСЂС‹РІР°РµС‚ ChatActivity РїСЂРё РїРѕРїС‹С‚РєРµ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє
+     * ChatClientService.
+     */
+    @Override
+    public boolean startConnection(Messenger selectedMessenger) {
+	if (super.startConnection(selectedMessenger)) {
+	    try {
+		UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
 
-	// Client-реализация IChatClient для ChatActivity
-	/** Обновляет Messanger связи с UI. Возвращает false, если аргумент null. */
-	@Override
-	public boolean updateMessenger(Messenger selectedMessenger)
-	{
-		return super.updateMessanger(selectedMessenger);
-	};
+		final BluetoothSocket serverSocket = mMasterDevice.createRfcommSocketToServiceRecord(myid);
+		serverSocket.connect();
+		syncAddConnectionSocket(serverSocket);
+		return true;
+	    } catch (IOException e) {
+		// РћСЃРЅРѕРІРЅР°СЏ РѕС€РёР±РєР° Р·РґРµСЃСЊ: РїРѕРїС‹С‚РєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє СѓСЃС‚СЂРѕР№СЃС‚РІСѓ, РЅР°
+		// РєРѕС‚РѕСЂРѕРј РЅРµ РїРѕРґРЅСЏС‚ РЅСѓР¶РЅС‹Р№ СЃРµСЂРІРёСЃ Service Discovery Protocol
+		// (SDP)
+		Toast.makeText(getBaseContext(), e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+		return false;
+	    }
+	} else {
+	    return false;
+	}
+    };
 
-	/**
-	 * Client-реализация одного из методов интерфейса IChatClient, отвечающего
-	 * за создание потока связи с приложением, запущенном в режиме Server.
-	 * Возврат false закрывает ChatActivity при попытке подключения к
-	 * ChatClientService.
-	 */
-	@Override
-	public boolean startConnection(Messenger selectedMessenger)
-	{
-		if (super.startConnection(selectedMessenger))
-		{
-			try
-			{
-				UUID myid = UUID.fromString(getResources().getString(R.string.service_uuid));
+    @Override
+    public void sendResponse(String msg) {
+	// Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ СЃРѕРіР»Р°СЃРЅРѕ РІС‹Р±СЂР°РЅРЅРѕРјСѓ РїСЂРѕС‚РѕРєРѕР»Сѓ
+	broadcasting(null, new MessagePacket(MessageCode.__TEXT, ++aLastOutputMsgNumber, msg));
+    };
 
-				final BluetoothSocket serverSocket = mMasterDevice.createRfcommSocketToServiceRecord(myid);
-				serverSocket.connect();
-				syncAddConnectionSocket(serverSocket);
-				return true;
-			}
-			catch (IOException e)
-			{
-				// Основная ошибка здесь: попытка подключения к устройству, на
-				// котором не поднят нужный сервис Service Discovery Protocol
-				// (SDP)
-				Toast.makeText(getBaseContext(), e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
-				return false;
-			}
-		}
-		else
-		{
-			return false;
-		}
-	};
-
-	@Override
-	public void sendResponse(String msg)
-	{
-		// Формирование сообщения согласно выбранному протоколу
-		broadcasting(null, new MessagePacket(MessageCode.__TEXT, ++aLastOutputMsgNumber, msg));
-	};
-
-	@Override
-	public final void stopConnection()
-	{
-		mMasterDevice = null;
-		super.stopConnection();
-	};
+    @Override
+    public void stopConnection() {
+	mMasterDevice = null;
+	super.stopConnection();
+    };
 }

@@ -1,31 +1,27 @@
-package by.spontaneous.bluetoothchat;
+﻿package by.spontaneous.bluetoothchat;
 
-enum ApplicationMode
-{
-	UNKNOWN(0),
-	
-	SERVER(1),
-	CLIENT(2);
-	
-	private final int id;
-	
-	ApplicationMode(int code)
-	{
-		id = code;
-	};
+enum ApplicationMode {
+    UNKNOWN(0),
 
-	public final int getId()
-	{
-		return id;
-	};
+    SERVER(1),
+    CLIENT(2);
 
-	public final static ApplicationMode fromId(int code)
-	{
-		ApplicationMode[] list = ApplicationMode.values();
+    private final int id;
 
-		if (code >= 0 && code < list.length)
-			return list[code];
-		else
-			return ApplicationMode.UNKNOWN;
-	};
+    ApplicationMode(int code) {
+	id = code;
+    };
+
+    public int getId() {
+	return id;
+    };
+
+    public static ApplicationMode fromId(int code) {
+	ApplicationMode[] list = ApplicationMode.values();
+
+	if (code >= 0 && code < list.length)
+	    return list[code];
+	else
+	    return ApplicationMode.UNKNOWN;
+    };
 }

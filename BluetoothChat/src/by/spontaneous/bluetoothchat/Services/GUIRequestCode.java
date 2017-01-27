@@ -1,36 +1,32 @@
-package by.spontaneous.bluetoothchat.Services;
+﻿package by.spontaneous.bluetoothchat.Services;
 
-public enum GUIRequestCode
-{
-	_UNKNOWN((byte)0),
-	
-	_TOAST((byte)1),
-	_MESSAGE((byte)2),
-	_BLOCK((byte)3),
-	_UNBLOCK((byte)4),
-	_CUT((byte)5),
-	_LONELINESS((byte)6),
-	_QUIT((byte)7);
+public enum GUIRequestCode {
+    _UNKNOWN((byte) 0),
 
-	private final byte id;
+    _TOAST((byte) 1),
+    _MESSAGE((byte) 2),
+    _BLOCK((byte) 3),
+    _UNBLOCK((byte) 4),
+    _CUT((byte) 5),
+    _LONELINESS((byte) 6),
+    _QUIT((byte) 7);
 
-	GUIRequestCode(byte code)
-	{
-		id = code;
-	};
+    private final byte id;
 
-	public final byte getId()
-	{
-		return id;
-	};
+    GUIRequestCode(byte code) {
+	id = code;
+    };
 
-	public final static GUIRequestCode fromId(byte code)
-	{
-		final GUIRequestCode[] list = GUIRequestCode.values();
-		
-		if (code >= 0 && code < list.length)
-			return list[code];
-		else
-			return GUIRequestCode._UNKNOWN;
-	};
+    public byte getId() {
+	return id;
+    };
+
+    public static GUIRequestCode fromId(byte code) {
+	final GUIRequestCode[] list = GUIRequestCode.values();
+
+	if (code >= 0 && code < list.length)
+	    return list[code];
+	else
+	    return GUIRequestCode._UNKNOWN;
+    };
 }
