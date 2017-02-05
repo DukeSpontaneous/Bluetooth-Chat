@@ -9,6 +9,12 @@
 <intAttribute key="org.eclipse.andmore.speed" value="0"/>
 <stringAttribute key="org.eclipse.andmore.target" value="AUTO"/>
 <booleanAttribute key="org.eclipse.andmore.wipedata" value="false"/>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+<listEntry value="/P001_Bluetooth_Server"/>
+</listAttribute>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+<listEntry value="4"/>
+</listAttribute>
 <booleanAttribute key="org.eclipse.jdt.launching.ALLOW_TERMINATE" value="true"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="P001_Bluetooth_Server"/>
 </launchConfiguration>

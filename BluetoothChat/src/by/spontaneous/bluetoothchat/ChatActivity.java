@@ -3,45 +3,15 @@
 import android.app.Activity;
 import android.app.Fragment;
 import android.bluetooth.BluetoothAdapter;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.widget.Toast;
 import by.spontaneous.bluetoothchat.Services.ChatClientService;
 import by.spontaneous.bluetoothchat.Services.ChatServerService;
+import by.spontaneous.bluetoothchat.Services.ServiceBinding;
 
 public class ChatActivity extends Activity {
-    /** Объект подключения к Service'у ChatServerService */
-    private final ServiceConnection mServerConnection = new ServiceConnection() {
-	@Override
-	public void onServiceConnected(ComponentName className, IBinder service) {
-	    // Получение объекта сервиса при успешном подключении
-	    final ChatServerService mChatServerService = ((ChatServerService.LocalBinder) service).getService();
-	    mConnectionFragment.updateChatClient(mChatServerService);
-	}
-
-	@Override
-	public void onServiceDisconnected(ComponentName arg0) {
-	    Toast.makeText(getBaseContext(), "Неявное отключение сервиса Server...", Toast.LENGTH_LONG).show();
-	}
-    };
-    /** Объект подключения к Service'у ChatClientService */
-    private final ServiceConnection mClientConnection = new ServiceConnection() {
-	@Override
-	public void onServiceConnected(ComponentName className, IBinder service) {
-	    // Получение объекта сервиса при успешном подключении
-	    final ChatClientService mChatClientService = ((ChatClientService.LocalBinder) service).getService();
-	    mConnectionFragment.updateChatClient(mChatClientService);
-	}
-
-	@Override
-	public void onServiceDisconnected(ComponentName arg0) {
-	    Toast.makeText(getBaseContext(), "Неявное отключение сервиса Client...", Toast.LENGTH_LONG).show();
-	}
-    };
 
     /** Вариант допустимого кода для включения Bluetooth устройства. */
     private static final int REQUEST_DISCOVERABLE_BT = 2;
@@ -51,16 +21,21 @@ public class ChatActivity extends Activity {
     
     private ConnectionFragment mConnectionFragment;
 
-    protected ApplicationMode mApplicationMode;
-    // private ProgressDialog mProgressDialog;
+    /** Объект подключения к Service'у ChatServerService */
+    private ServiceBinding<ChatServerService> mServerBinding;
+    /** Объект подключения к Service'у ChatClientService */
+    private ServiceBinding<ChatClientService> mClientBinding;
 
-    // TODO: не очень понятно, когда происходит это событие, и не факт, что
-    // раньше привязки сервиса. Хотя сейчас работает так, как будто срабатывает
-    // раньше ответа на привязку.
+    
+    protected ApplicationMode mApplicationMode;
+
     @Override
     public void onAttachFragment(Fragment fragment) {
 	super.onAttachFragment(fragment);
 	mConnectionFragment = (ConnectionFragment) fragment;
+
+	mServerBinding = new ServiceBinding<ChatServerService>(mConnectionFragment);
+	mClientBinding = new ServiceBinding<ChatClientService>(mConnectionFragment);
     };
 
     @Override
@@ -100,20 +75,16 @@ public class ChatActivity extends Activity {
 	    }
 	}
 
-	// mProgressDialog = new ProgressDialog(this);
-	// mProgressDialog.setTitle("Отправка сообщения");
-	// mProgressDialog.setMessage("Ожидание подтверждения...");
-
 	// Привязка целевого Service к актуальному Activity
 	Intent intent;
 	switch (mApplicationMode) {
 	case SERVER:
 	    intent = new Intent(getApplicationContext(), ChatServerService.class);
-	    bindService(intent, mServerConnection, Context.BIND_AUTO_CREATE);
+	    bindService(intent, mServerBinding, Context.BIND_AUTO_CREATE);
 	    break;
 	case CLIENT:
 	    intent = new Intent(getApplicationContext(), ChatClientService.class);
-	    bindService(intent, mClientConnection, Context.BIND_AUTO_CREATE);
+	    bindService(intent, mClientBinding, Context.BIND_AUTO_CREATE);
 	    break;
 	default:
 	    Toast.makeText(getBaseContext(), "Ошибка ChatActivity: неопределённый режим запуска!", Toast.LENGTH_LONG)
@@ -126,10 +97,10 @@ public class ChatActivity extends Activity {
     protected void onDestroy() {
 	switch (mApplicationMode) {
 	case SERVER:
-	    unbindService(mServerConnection);
+	    unbindService(mServerBinding);
 	    break;
 	case CLIENT:
-	    unbindService(mClientConnection);
+	    unbindService(mClientBinding);
 	    break;
 	default:
 	    Toast.makeText(getBaseContext(), "Ошибка ChatActivity: неопределённый режим запуска!", Toast.LENGTH_LONG)

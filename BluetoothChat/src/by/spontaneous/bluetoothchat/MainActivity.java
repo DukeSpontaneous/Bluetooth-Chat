@@ -6,13 +6,10 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -25,48 +22,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 import by.spontaneous.bluetoothchat.Services.ChatClientService;
 import by.spontaneous.bluetoothchat.Services.ChatServerService;
+import by.spontaneous.bluetoothchat.Services.ServiceBinding;
 
 public class MainActivity extends Activity {
-    /** Объект подключения к Service'у ChatClientService */
-    private final ServiceConnection mServerConnection = new ServiceConnection() {
-	@Override
-	public void onServiceConnected(ComponentName className, IBinder service) {
-	    // Получение объекта сервиса при успешном подключении
-	    mChatServerService = ((ChatServerService.LocalBinder) service).getService();
-	};
-
-	@Override
-	public void onServiceDisconnected(ComponentName arg0) {
-	    Toast.makeText(getBaseContext(), "Неявное отключение сервиса Server...", Toast.LENGTH_LONG).show();
-	    mChatServerService = null;
-	};
-    };
-    /** Объект подключения к Service'у ChatClientService */
-    private final ServiceConnection mClientConnection = new ServiceConnection() {
-	@Override
-	public void onServiceConnected(ComponentName className, IBinder service) {
-	    // Получение объекта сервиса при успешном подключении
-	    mChatClientService = ((ChatClientService.LocalBinder) service).getService();
-	};
-
-	@Override
-	public void onServiceDisconnected(ComponentName arg0) {
-	    Toast.makeText(getBaseContext(), "Неявное отключение сервиса Client...", Toast.LENGTH_LONG).show();
-	    mChatClientService = null;
-	};
-    };
-        
     /** Вариант допустимого кода для включения Bluetooth устройства. */
     private static final int REQUEST_ENABLE_BT = 1;
     /** Адаптер умолчательного Bluetooth устройсва Android. */
     private final BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
  
-    
-    /** Точка доступа к ChatServerService. */
-    private ChatServerService mChatServerService;
-    /** Точка доступа к ChatClientService. */
-    private ChatClientService mChatClientService;
 
+    /** Объект подключения к Service'у ChatClientService */
+    private final ServiceBinding<ChatServerService> mServerBinding = new ServiceBinding<ChatServerService>();
+    /** Объект подключения к Service'у ChatClientService */
+    private final ServiceBinding<ChatClientService> mClientBinding = new ServiceBinding<ChatClientService>();
+    
     
     /** Список обнаруженых потенциальных серверов BluetoothDevice. */
     private ArrayList<BluetoothDevice> mDiscoveredDevices;
@@ -139,10 +108,10 @@ public class MainActivity extends Activity {
 
 	// Bind to LocalService
 	Intent intentC = new Intent(getApplicationContext(), ChatServerService.class);
-	bindService(intentC, mServerConnection, Context.BIND_AUTO_CREATE);
+	bindService(intentC, mServerBinding, Context.BIND_AUTO_CREATE);
 
 	intentC = new Intent(getApplicationContext(), ChatClientService.class);
-	bindService(intentC, mClientConnection, Context.BIND_AUTO_CREATE);
+	bindService(intentC, mClientBinding, Context.BIND_AUTO_CREATE);
     };
 
     @Override
@@ -156,12 +125,12 @@ public class MainActivity extends Activity {
 	    // осуществившего привязку.
 
 	    // Unbind from the service
-	    if (mChatServerService != null) {
-		unbindService(mServerConnection);
+	    if (mServerBinding.getService() != null) {
+		unbindService(mServerBinding);
 	    }
 
-	    if (mChatClientService != null) {
-		unbindService(mClientConnection);
+	    if (mClientBinding.getService() != null) {
+		unbindService(mClientBinding);
 	    }
 	}
 
@@ -269,7 +238,7 @@ public class MainActivity extends Activity {
 	// Если было выбрано серверное устройство, то следует передать его
 	// СhatClientService
 	if (device != null)
-	    mChatClientService.setMasterDevice(device);
+	    mClientBinding.getService().setMasterDevice(device);
 
 	startActivity(chatActivityIntent);
     };

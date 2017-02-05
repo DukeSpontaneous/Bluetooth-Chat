@@ -175,7 +175,7 @@ public class ConnectionFragment extends Fragment {
      * Messenger, и соответственно может быть использован только после
      * инициализации Messenger'а.
      */
-    protected void updateChatClient(IChatClient client) {
+    public void updateChatClient(IChatClient client) {
 	final ChatActivity activity = (ChatActivity) getActivity();
 
 	if (client != null)

@@ -11,20 +11,32 @@ import java.util.TimerTask;
 
 import android.app.Service;
 import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
+import android.os.Binder;
+import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.widget.Toast;
 
-public abstract class ChatService extends Service implements IChatClient {
+public abstract class ChatService<T extends ChatService<T>> extends Service implements IChatClient {
+        
+    private final IBinder mBinder = new LocalBinder();
+    
+    public class LocalBinder extends Binder {
+	@SuppressWarnings("unchecked")
+	public T getService() {
+	    return (T) T.this;
+	}
+    };
+    
+    public IBinder onBind(Intent intent) {
+	return mBinder;
+    };
+    
+    
     /** Список Thread'ов поднятых подключений. */
     protected final ArrayList<ConnectionThread> aConnectionThread = new ArrayList<ConnectionThread>();
-
-    /** Messenger взаимодействия с GUI. */
-    protected volatile Messenger aMessenger;
-    
-    /** ID последнего исходящего сообщения. */
-    protected volatile int aLastOutputMsgNumber = 0;
 
     /**
      * Хэш-карта ожидаемых подтверждений доставки сообщений (поток, список
@@ -35,6 +47,12 @@ public abstract class ChatService extends Service implements IChatClient {
     protected final HashMap<Thread, ArrayList<MessagePacket>> aConfirmationMap = new HashMap<Thread, ArrayList<MessagePacket>>();
     protected final HashMap<String, Integer> aLastInputMsgNumberMap = new HashMap<String, Integer>();
 
+    /** Messenger взаимодействия с GUI. */
+    protected volatile Messenger aMessenger;
+    
+    /** ID последнего исходящего сообщения. */
+    protected volatile int aLastOutputMsgNumber = 0;    
+    
     // This class is thread-safe: multiple threads can share a single Timer
     // object without the need for external synchronization.
 

@@ -5,31 +5,15 @@ import java.util.UUID;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.Intent;
-import android.os.Binder;
-import android.os.IBinder;
 import android.os.Messenger;
 import android.widget.Toast;
 import by.spontaneous.bluetoothchat.R;
 
-public class ChatClientService extends ChatService {
+public class ChatClientService extends ChatService<ChatClientService> {
     
     /** Внешний целевой BluetoothDevice-сервер (null для самого сервера). */
     private BluetoothDevice mMasterDevice;
     
-    private final IBinder mBinder = new LocalBinder();
-    
-    public class LocalBinder extends Binder {
-	public ChatClientService getService() {
-	    return ChatClientService.this;
-	}
-    };
-
-    @Override
-    public IBinder onBind(Intent intent) {
-	return mBinder;
-    };
-
     @Override
     public void onCreate() {
 	super.onCreate();
